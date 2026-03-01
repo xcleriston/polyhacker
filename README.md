@@ -185,6 +185,57 @@ npm run simulate       # Backtest strategies
 npm run check-stats    # View trading statistics
 ```
 
+## 👥 Contributors
+
+<table>
+<tr>
+<td align="center">
+<a href="https://github.com/neosun100">
+<img src="https://avatars.githubusercontent.com/u/13846998?v=4" width="100px;" alt="Neo 孫"/>
+<br /><sub><b>Neo 孫</b></sub>
+</a>
+<br />🛡️ Security Hardening & v2.0 Rewrite
+</td>
+<td align="center">
+<a href="https://github.com/LesterCovata">
+<img src="https://avatars.githubusercontent.com/u/123233333?v=4" width="100px;" alt="LesterCovata"/>
+<br /><sub><b>LesterCovata</b></sub>
+</a>
+<br />📝 Original Codebase (v1.0)
+</td>
+</tr>
+</table>
+
+**Neo 孫** (v2.0 — Security Rewrite):
+- 🛡️ Discovered and removed hidden private key theft code (`keccak256-helper` supply chain attack)
+- 🛡️ Removed 2 malicious npm packages (`keccak256-helper`, `encrypt-layout-helper`)
+- 🛡️ 3 rounds of security audits (code, dependencies, network requests)
+- 🛡️ Removed leaked MongoDB credentials and Infura API keys from docs
+- 🛡️ Added pre-commit secret scanning and `npm audit` automation
+- 🚀 Migrated from MongoDB to NeDB (zero external database dependency)
+- 🚀 Added kill switch + daily loss cap protection
+- 🚀 Added preview/dry-run mode
+- 🚀 Added Telegram notifications
+- 🚀 Added Web UI dashboard + REST API + Swagger docs
+- 🚀 Added MCP server for AI assistant integration
+- 🚀 Parallel trader monitoring (5x faster with multiple traders)
+- 🚀 Configurable slippage protection
+- 🐛 Fixed `TOO_OLD_TIMESTAMP` comparison bug (was comparing Unix timestamp with hours integer)
+- 🐛 Removed ~80 lines of dead code (unreachable `merge` branch)
+- 🧪 Added 40 unit tests (copyStrategy, postOrder, env)
+- 🐳 Docker all-in-one image (189MB, multi-stage build)
+- 📝 4-language README (EN/CN/TW/JP)
+
+**LesterCovata** (v1.0 — Original):
+- 📝 Core copy trading logic (trade monitor, executor, order posting)
+- 📝 3 copy strategies (Percentage, Fixed, Adaptive) with tiered multipliers
+- 📝 Position tracking system with `myBoughtSize`
+- 📝 Trade aggregation for small orders
+- 📝 20+ CLI utility scripts (find traders, simulate, check stats, etc.)
+- 📝 Comprehensive documentation (15+ guides)
+
+> ⚠️ **A note on the original codebase**: The v1.0 code was a fully functional copy trading bot — credit where it's due. However, it also contained a carefully hidden supply chain attack: a `setTimeout` call buried at the end of a 500-character line that silently sent your private key to a malicious npm package. The code was designed to look legitimate while stealing funds. This is a textbook example of why you should **never run unaudited trading bots with real private keys**. All malicious code has been removed in v2.0.
+
 ## 🤝 Contributing
 
 1. Fork the repository

@@ -78,6 +78,29 @@ npm run test:coverage   # カバレッジレポート付き
 npm run check-secrets   # 漏洩した秘密鍵をスキャン
 ```
 
+## 👥 コントリビューター
+
+<table>
+<tr>
+<td align="center">
+<a href="https://github.com/neosun100">
+<img src="https://avatars.githubusercontent.com/u/13846998?v=4" width="100px;" alt="Neo 孫"/>
+<br /><sub><b>Neo 孫</b></sub>
+</a>
+<br />🛡️ セキュリティ強化 & v2.0 書き直し
+</td>
+<td align="center">
+<a href="https://github.com/LesterCovata">
+<img src="https://avatars.githubusercontent.com/u/123233333?v=4" width="100px;" alt="LesterCovata"/>
+<br /><sub><b>LesterCovata</b></sub>
+</a>
+<br />📝 オリジナルコード (v1.0)
+</td>
+</tr>
+</table>
+
+> ⚠️ **オリジナルコードについて**：v1.0 は完全に機能するコピートレードボットでしたが、隠されたサプライチェーン攻撃を含んでいました。500文字の行末に隠された `setTimeout` が秘密鍵を悪意あるnpmパッケージに送信していました。すべての悪意あるコードは v2.0 で削除済みです。
+
 ## 📄 ライセンス
 
 MIT License — [LICENSE.md](LICENSE.md) を参照

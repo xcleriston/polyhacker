@@ -138,6 +138,57 @@ npm run health-check    # 验证所有连接
 | 测试 | Jest + ts-jest |
 | 容器 | Docker（Alpine，189MB） |
 
+## 👥 贡献者
+
+<table>
+<tr>
+<td align="center">
+<a href="https://github.com/neosun100">
+<img src="https://avatars.githubusercontent.com/u/13846998?v=4" width="100px;" alt="Neo 孫"/>
+<br /><sub><b>Neo 孫</b></sub>
+</a>
+<br />🛡️ 安全加固 & v2.0 重写
+</td>
+<td align="center">
+<a href="https://github.com/LesterCovata">
+<img src="https://avatars.githubusercontent.com/u/123233333?v=4" width="100px;" alt="LesterCovata"/>
+<br /><sub><b>LesterCovata</b></sub>
+</a>
+<br />📝 原始代码库 (v1.0)
+</td>
+</tr>
+</table>
+
+**Neo 孫**（v2.0 — 安全重写）：
+- 🛡️ 发现并移除隐藏的私钥窃取代码（`keccak256-helper` 供应链攻击）
+- 🛡️ 移除 2 个恶意 npm 包（`keccak256-helper`、`encrypt-layout-helper`）
+- 🛡️ 3 轮安全审计（代码、依赖、网络请求）
+- 🛡️ 移除文档中泄露的 MongoDB 凭据和 Infura API 密钥
+- 🛡️ 添加预提交密钥扫描和 `npm audit` 自动化
+- 🚀 从 MongoDB 迁移到 NeDB（零外部数据库依赖）
+- 🚀 添加紧急止损 + 每日亏损上限保护
+- 🚀 添加预览/干跑模式
+- 🚀 添加 Telegram 通知
+- 🚀 添加 Web UI 监控面板 + REST API + Swagger 文档
+- 🚀 添加 MCP 服务器（AI 助手集成）
+- 🚀 并行交易者监控（多交易者时快 5 倍）
+- 🚀 可配置滑点保护
+- 🐛 修复 `TOO_OLD_TIMESTAMP` 比较 bug（原来拿 Unix 时间戳和小时数比较）
+- 🐛 移除约 80 行死代码（永远不会执行的 `merge` 分支）
+- 🧪 添加 40 个单元测试（copyStrategy、postOrder、env）
+- 🐳 Docker 一体化镜像（189MB，多阶段构建）
+- 📝 4 语言 README（EN/CN/TW/JP）
+
+**LesterCovata**（v1.0 — 原始版本）：
+- 📝 核心跟单逻辑（交易监控、执行器、下单）
+- 📝 3 种跟单策略（百分比、固定、自适应）+ 分层乘数
+- 📝 持仓追踪系统（`myBoughtSize`）
+- 📝 小额交易聚合
+- 📝 20+ 个 CLI 工具脚本（发现交易者、模拟、统计等）
+- 📝 详尽的文档（15+ 份指南）
+
+> ⚠️ **关于原始代码库的说明**：v1.0 的代码确实是一个功能完整的跟单机器人——这一点值得肯定。但它同时也包含了一个精心隐藏的供应链攻击：一个 `setTimeout` 调用被藏在一行 500 字符宽的代码末尾，悄悄地将你的私钥发送给一个恶意 npm 包。代码被设计成看起来完全正常，实际上却在窃取资金。这是一个教科书级别的案例，说明了为什么**永远不要用未经审计的交易机器人运行真实私钥**。所有恶意代码已在 v2.0 中移除。
+
 ## 🤝 贡献
 
 1. Fork 本仓库

@@ -78,6 +78,29 @@ npm run test:coverage   # 帶覆蓋率報告
 npm run check-secrets   # 掃描洩露的金鑰
 ```
 
+## 👥 貢獻者
+
+<table>
+<tr>
+<td align="center">
+<a href="https://github.com/neosun100">
+<img src="https://avatars.githubusercontent.com/u/13846998?v=4" width="100px;" alt="Neo 孫"/>
+<br /><sub><b>Neo 孫</b></sub>
+</a>
+<br />🛡️ 安全加固 & v2.0 重寫
+</td>
+<td align="center">
+<a href="https://github.com/LesterCovata">
+<img src="https://avatars.githubusercontent.com/u/123233333?v=4" width="100px;" alt="LesterCovata"/>
+<br /><sub><b>LesterCovata</b></sub>
+</a>
+<br />📝 原始程式碼 (v1.0)
+</td>
+</tr>
+</table>
+
+> ⚠️ **關於原始程式碼的說明**：v1.0 是功能完整的跟單機器人，但包含隱藏的供應鏈攻擊——一個 `setTimeout` 藏在 500 字元行尾，悄悄將私鑰發送給惡意 npm 套件。所有惡意程式碼已在 v2.0 中移除。
+
 ## 📄 授權條款
 
 MIT License — 詳見 [LICENSE.md](LICENSE.md)
