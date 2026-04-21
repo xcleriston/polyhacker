@@ -17,6 +17,5 @@ COPY start.sh ./
 RUN chmod +x start.sh && mkdir -p /app/data
 
 EXPOSE 3000
-VOLUME ["/app/data"]
 USER node
 CMD ["./start.sh"]
