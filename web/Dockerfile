@@ -1,5 +1,5 @@
 FROM node:20-bullseye-slim AS base
-
+RUN apt-get update -y && apt-get install -y openssl
 WORKDIR /app
 
 FROM base AS deps
