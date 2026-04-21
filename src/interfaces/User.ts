@@ -24,7 +24,9 @@ export interface UserActivityInterface {
     bot: boolean;
     botExcutedTime: number;
     myBoughtSize?: number;
+    orderType?: 'MARKET' | 'LIMIT';
 }
+
 
 export interface UserPositionInterface {
     _id?: string;

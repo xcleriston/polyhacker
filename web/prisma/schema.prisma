@@ -1,0 +1,44 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  traders   Trader[]
+  trades    Trade[]
+}
+
+model Trader {
+  id            String   @id @default(cuid())
+  userId        String
+  walletAddress String
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, walletAddress])
+}
+
+model Trade {
+  id              String   @id @default(cuid())
+  userId          String
+  traderAddress   String
+  side            String
+  asset           String
+  usdcSize        Float
+  price           Float
+  orderType       String   @default("MARKET")
+  status          String   @default("PENDING")
+  transactionHash String?
+  market          String?
+  createdAt       DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

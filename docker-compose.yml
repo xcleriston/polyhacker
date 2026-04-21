@@ -1,12 +1,39 @@
+version: '3.9'
+
 services:
-  bot:
-    image: neosun/polycopy:latest
+  postgres:
+    image: postgres:16-alpine
+    container_name: poly-hacker-db
     restart: unless-stopped
-    env_file: .env
+    environment:
+      POSTGRES_USER: polyhacker
+      POSTGRES_PASSWORD: polyhacker_secret
+      POSTGRES_DB: polyhacker
     ports:
-      - "0.0.0.0:3000:3000"
+      - '5432:5432'
     volumes:
-      - bot_data:/app/data
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U polyhacker']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: poly-hacker-web
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      DATABASE_URL: postgresql://polyhacker:polyhacker_secret@postgres:5432/polyhacker
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
-  bot_data:
+  postgres_data:

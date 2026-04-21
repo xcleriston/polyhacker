@@ -2,6 +2,7 @@ import { ENV } from '../config/env';
 import { getUserActivityModel, getUserPositionModel } from '../models/userHistory';
 import fetchData from '../utils/fetchData';
 import Logger from '../utils/logger';
+import { detectOrderType } from '../config/mirrorMode';
 
 const USER_ADDRESSES = ENV.USER_ADDRESSES;
 const TOO_OLD_TIMESTAMP = ENV.TOO_OLD_TIMESTAMP;
@@ -37,7 +38,6 @@ const init = async () => {
         const currentBalance = await getMyBalance(ENV.PROXY_WALLET);
 
         if (Array.isArray(myPositions) && myPositions.length > 0) {
-            // Calculate your overall profitability and initial investment
             let totalValue = 0;
             let initialValue = 0;
             let weightedPnl = 0;
@@ -51,7 +51,6 @@ const init = async () => {
             });
             const myOverallPnl = totalValue > 0 ? weightedPnl / totalValue : 0;
 
-            // Get top 5 positions by profitability (PnL)
             const myTopPositions = myPositions
                 .sort((a: any, b: any) => (b.percentPnl || 0) - (a.percentPnl || 0))
                 .slice(0, 5);
@@ -82,7 +81,6 @@ const init = async () => {
         const positions = await UserPosition.find().exec();
         positionCounts.push(positions.length);
 
-        // Calculate overall profitability (weighted average by current value)
         let totalValue = 0;
         let weightedPnl = 0;
         positions.forEach((pos) => {
@@ -94,7 +92,6 @@ const init = async () => {
         const overallPnl = totalValue > 0 ? weightedPnl / totalValue : 0;
         profitabilities.push(overallPnl);
 
-        // Get top 3 positions by profitability (PnL)
         const topPositions = positions
             .sort((a, b) => (b.percentPnl || 0) - (a.percentPnl || 0))
             .slice(0, 3)
@@ -107,7 +104,6 @@ const init = async () => {
 
 const fetchTradeDataForTrader = async ({ address, UserActivity, UserPosition }: typeof userModels[number]) => {
     try {
-        // Fetch trade activities from Polymarket API
         const apiUrl = `https://data-api.polymarket.com/activity?user=${address}&type=TRADE`;
         const activities = await fetchData(apiUrl);
 
@@ -115,7 +111,6 @@ const fetchTradeDataForTrader = async ({ address, UserActivity, UserPosition }: 
             return;
         }
 
-        // Process each activity
         const cutoffTimestamp = Date.now() / 1000 - TOO_OLD_TIMESTAMP * 3600;
         for (const activity of activities) {
             if (activity.timestamp < cutoffTimestamp) continue;
@@ -124,6 +119,9 @@ const fetchTradeDataForTrader = async ({ address, UserActivity, UserPosition }: 
                 transactionHash: activity.transactionHash,
             }).exec();
             if (exists) continue;
+
+            // Detect order type: LIMIT if price is a valid probability value (0 < price < 1)
+            const orderType = detectOrderType(activity.price);
 
             await UserActivity({
                 proxyWallet: activity.proxyWallet,
@@ -149,8 +147,11 @@ const fetchTradeDataForTrader = async ({ address, UserActivity, UserPosition }: 
                 profileImageOptimized: activity.profileImageOptimized,
                 bot: false,
                 botExcutedTime: 0,
+                orderType,
             }).save();
-            Logger.info(`New trade detected for ${address.slice(0, 6)}...${address.slice(-4)}`);
+            Logger.info(
+                `[TRADE DETECTED] ${address.slice(0, 6)}...${address.slice(-4)} | ${orderType} | size=$${activity.usdcSize} price=${activity.price}`
+            );
         }
 
         // Also fetch and update positions
@@ -161,38 +162,38 @@ const fetchTradeDataForTrader = async ({ address, UserActivity, UserPosition }: 
             for (const position of positions) {
                 await UserPosition.findOneAndUpdate(
                     { asset: position.asset, conditionId: position.conditionId },
-                        {
-                            proxyWallet: position.proxyWallet,
-                            asset: position.asset,
-                            conditionId: position.conditionId,
-                            size: position.size,
-                            avgPrice: position.avgPrice,
-                            initialValue: position.initialValue,
-                            currentValue: position.currentValue,
-                            cashPnl: position.cashPnl,
-                            percentPnl: position.percentPnl,
-                            totalBought: position.totalBought,
-                            realizedPnl: position.realizedPnl,
-                            percentRealizedPnl: position.percentRealizedPnl,
-                            curPrice: position.curPrice,
-                            redeemable: position.redeemable,
-                            mergeable: position.mergeable,
-                            title: position.title,
-                            slug: position.slug,
-                            icon: position.icon,
-                            eventSlug: position.eventSlug,
-                            outcome: position.outcome,
-                            outcomeIndex: position.outcomeIndex,
-                            oppositeOutcome: position.oppositeOutcome,
-                            oppositeAsset: position.oppositeAsset,
-                            endDate: position.endDate,
-                            negativeRisk: position.negativeRisk,
-                        },
-                        { upsert: true }
-                    );
-                }
+                    {
+                        proxyWallet: position.proxyWallet,
+                        asset: position.asset,
+                        conditionId: position.conditionId,
+                        size: position.size,
+                        avgPrice: position.avgPrice,
+                        initialValue: position.initialValue,
+                        currentValue: position.currentValue,
+                        cashPnl: position.cashPnl,
+                        percentPnl: position.percentPnl,
+                        totalBought: position.totalBought,
+                        realizedPnl: position.realizedPnl,
+                        percentRealizedPnl: position.percentRealizedPnl,
+                        curPrice: position.curPrice,
+                        redeemable: position.redeemable,
+                        mergeable: position.mergeable,
+                        title: position.title,
+                        slug: position.slug,
+                        icon: position.icon,
+                        eventSlug: position.eventSlug,
+                        outcome: position.outcome,
+                        outcomeIndex: position.outcomeIndex,
+                        oppositeOutcome: position.oppositeOutcome,
+                        oppositeAsset: position.oppositeAsset,
+                        endDate: position.endDate,
+                        negativeRisk: position.negativeRisk,
+                    },
+                    { upsert: true }
+                );
             }
-        } catch (error) {
+        }
+    } catch (error) {
         Logger.error(
             `Error fetching data for ${address.slice(0, 6)}...${address.slice(-4)}: ${error}`
         );

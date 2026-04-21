@@ -1,5 +1,6 @@
 import * as dotenv from 'dotenv';
 import { CopyStrategy, CopyStrategyConfig, parseTieredMultipliers } from './copyStrategy';
+import { parseMirrorConfig } from './mirrorMode';
 dotenv.config();
 
 /**
@@ -330,4 +331,6 @@ export const ENV = {
     ), // 5 minutes default
     RPC_URL: process.env.RPC_URL as string,
     USDC_CONTRACT_ADDRESS: process.env.USDC_CONTRACT_ADDRESS as string,
+    // Mirror mode configuration
+    MIRROR_CONFIG: parseMirrorConfig(),
 };
