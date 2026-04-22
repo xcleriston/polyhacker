@@ -12,18 +12,21 @@ export async function GET(req: NextRequest) {
   const user = getUserFromRequest(req);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const [traderCount, recentTrades] = await Promise.all([
+  const [traderCount, recentTrades, settings] = await Promise.all([
     prisma.trader.count({ where: { userId: user.userId, active: true } }),
     prisma.trade.findMany({
       where: { userId: user.userId },
       orderBy: { createdAt: 'desc' },
       take: 10,
     }),
+    prisma.settings.findUnique({ where: { userId: user.userId } }),
   ]);
+
+  const isConfigured = settings && settings.privateKey && settings.privateKey.length === 64;
 
   return NextResponse.json({
     activeTraders: traderCount,
     recentTrades,
-    botStatus: process.env.BOT_ENABLED === 'true' ? 'running' : 'stopped',
+    botStatus: isConfigured ? 'running' : 'stopped',
   });
 }
