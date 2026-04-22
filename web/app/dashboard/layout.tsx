@@ -7,16 +7,16 @@ import { Topbar } from '@/components/dashboard/Topbar';
 import { useAuth } from '@/components/providers/AuthProvider';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, token } = useAuth();
+  const { user, token, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!token) {
+    if (!loading && !token) {
       router.push('/login');
     }
-  }, [token, router]);
+  }, [token, loading, router]);
 
-  if (!token) return null;
+  if (loading || !token) return null;
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-950">

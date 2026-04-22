@@ -11,6 +11,7 @@ interface AuthUser {
 interface AuthContextValue {
   user: AuthUser | null;
   token: string | null;
+  loading: boolean;
   logout: () => void;
   setAuth: (token: string, user: AuthUser) => void;
 }
@@ -20,6 +21,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
@@ -29,6 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(storedToken);
       setUser(JSON.parse(storedUser));
     }
+    setLoading(false);
   }, []);
 
   const setAuth = (t: string, u: AuthUser) => {
@@ -47,7 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, logout, setAuth }}>
+    <AuthContext.Provider value={{ user, token, loading, logout, setAuth }}>
       {children}
     </AuthContext.Provider>
   );
