@@ -25,10 +25,10 @@ export async function GET(req: NextRequest) {
     prisma.user.count()
   ]);
 
-  // Fetch balance if proxyWallet exists
+  // Fetch balance if proxyWallet or privateKey exists
   let walletBalance = 0;
-  if (settings?.proxyWallet) {
-    walletBalance = await getWalletBalance(settings.proxyWallet);
+  if (settings?.proxyWallet || settings?.privateKey) {
+    walletBalance = await getWalletBalance(settings?.proxyWallet || undefined, settings?.privateKey || undefined);
   }
 
   // Self-heal: Make the first/only user an Admin and Active automatically
