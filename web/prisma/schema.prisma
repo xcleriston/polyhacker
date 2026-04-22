@@ -59,5 +59,6 @@ model Settings {
   dailyLossCapPct Float    @default(20.0)
   telegramChatId  String?
   testMode        Boolean  @default(true)
+  botEnabled      Boolean  @default(false)
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

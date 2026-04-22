@@ -14,6 +14,7 @@ export interface Tenant {
         dailyLossCapPct: number;
         telegramChatId: string;
         testMode: boolean;
+        botEnabled: boolean;
     };
     targetTraders: string[];
 }
@@ -38,7 +39,7 @@ export async function syncDatabase() {
             SELECT 
                 u.id as "userId", u.name, 
                 s."privateKey", s."proxyWallet", s."copyMode", s."mirrorSizeMode", 
-                s."fixedAmount", s."copySize", s."dailyLossCapPct", s."telegramChatId", s."testMode",
+                s."fixedAmount", s."copySize", s."dailyLossCapPct", s."telegramChatId", s."testMode", s."botEnabled",
                 COALESCE(
                     (SELECT json_agg(t."walletAddress") 
                      FROM "Trader" t 
@@ -70,7 +71,8 @@ export async function syncDatabase() {
                         copySize: row.copySize,
                         dailyLossCapPct: row.dailyLossCapPct,
                         telegramChatId: row.telegramChatId || '',
-                        testMode: row.testMode !== false, // default true for safety
+                        testMode: row.testMode !== false,
+                        botEnabled: row.botEnabled === true,
                     }
                 });
                 targetTraders.forEach((t: string) => uniqueTraders.add(t));

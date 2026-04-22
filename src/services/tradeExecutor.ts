@@ -376,6 +376,7 @@ const tradeExecutor = async () => {
 
     while (isRunning) {
         for (const tenant of ACTIVE_TENANTS) {
+            if (!tenant.settings.botEnabled) continue;
             if (!tenant.targetTraders.length) continue;
 
             const trades = await readTempTradesForTenant(tenant);
@@ -412,6 +413,7 @@ const tradeExecutor = async () => {
 
         // Process aggregations for all tenants
         for (const tenant of ACTIVE_TENANTS) {
+            if (!tenant.settings.botEnabled) continue;
             const readyAggregations = getReadyAggregatedTrades(tenant);
             if (readyAggregations.length > 0) {
                 const clobClient = await getClobClientForTenant(tenant);
