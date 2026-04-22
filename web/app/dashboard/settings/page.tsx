@@ -287,9 +287,8 @@ export default function SettingsPage() {
             <Input
               name="telegramChatId"
               value={formData.telegramChatId}
-              readOnly
-              className="bg-slate-800/50 cursor-not-allowed opacity-70"
-              placeholder="Aguardando vínculo..."
+              onChange={handleChange}
+              placeholder="Ex: 123456789"
             />
             <p className="text-xs text-slate-500">
               {formData.telegramChatId 
