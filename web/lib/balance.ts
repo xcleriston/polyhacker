@@ -44,8 +44,8 @@ export async function getWalletBalance(address?: string, privateKey?: string): P
             if (data.proxyAddress) activeProxy = data.proxyAddress;
           }
         }
-      } catch (e) {
-        console.error('[BALANCE_LOG] Signer/Proxy error:', e.message);
+      } catch (e: any) {
+        console.error('[BALANCE_LOG] Signer/Proxy error:', e?.message || e);
       }
     }
 
@@ -68,8 +68,8 @@ export async function getWalletBalance(address?: string, privateKey?: string): P
     console.log(`[BALANCE_LOG] Result: ${total} (E: ${formattedE}, N: ${formattedNative}) in ${Date.now() - startTime}ms`);
     
     return { balance: total, addressUsed: targetAddr };
-  } catch (error) {
-    console.error('[BALANCE_LOG] Global error:', error.message);
+  } catch (error: any) {
+    console.error('[BALANCE_LOG] Global error:', error?.message || error);
     return { balance: 0, addressUsed: address || '' };
   }
 }
