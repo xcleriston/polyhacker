@@ -23,6 +23,7 @@ interface DashboardData {
     createdAt: string;
   }>;
   botStatus: 'running' | 'stopped';
+  userActive?: boolean;
 }
 
 interface Trader {
@@ -114,6 +115,21 @@ export default function DashboardPage() {
       bg: 'bg-blue-500/10',
     },
   ];
+
+  if (!loading && data?.userActive === false) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+        <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mb-6">
+          <XCircle className="w-10 h-10 text-red-500" />
+        </div>
+        <h1 className="text-2xl font-bold text-white">Conta Desativada</h1>
+        <p className="text-slate-400 mt-2 max-w-md">
+          Sua conta foi suspensa ou ainda não foi ativada pelo administrador. 
+          Entre em contato com o suporte para mais informações.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

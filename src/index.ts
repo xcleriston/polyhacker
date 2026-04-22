@@ -111,6 +111,10 @@ export const main = async () => {
         Logger.info('Starting multi-tenant trade executor...');
         tradeExecutor();
 
+        // Start Telegram Bot Listener
+        const { startTelegramBot } = await import('./services/telegramBot');
+        startTelegramBot();
+
         // Start web UI + API server
         startServer();
     } catch (error) {

@@ -287,10 +287,15 @@ export default function SettingsPage() {
             <Input
               name="telegramChatId"
               value={formData.telegramChatId}
-              onChange={handleChange}
-              placeholder="e.g. 123456789"
+              readOnly
+              className="bg-slate-800/50 cursor-not-allowed opacity-70"
+              placeholder="Aguardando vínculo..."
             />
-            <p className="text-xs text-slate-500">Receive trade alerts and errors directly in Telegram.</p>
+            <p className="text-xs text-slate-500">
+              {formData.telegramChatId 
+                ? '✅ Bot vinculado. Você receberá notificações aqui.' 
+                : 'Para vincular, envie `/vincular ' + user?.email + '` para o bot @polyhacker_bot.'}
+            </p>
           </div>
         </CardContent>
       </Card>
