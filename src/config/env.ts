@@ -15,9 +15,6 @@ const isValidEthereumAddress = (address: string): boolean => {
  */
 const validateRequiredEnv = (): void => {
     const required = [
-        'USER_ADDRESSES',
-        'PROXY_WALLET',
-        'PRIVATE_KEY',
         'CLOB_HTTP_URL',
         'CLOB_WS_URL',
         'RPC_URL',
@@ -32,12 +29,8 @@ const validateRequiredEnv = (): void => {
     }
 
     if (missing.length > 0) {
-        console.error('\n❌ Configuration Error: Missing required environment variables\n');
+        console.error('\n❌ Configuration Error: Missing required system environment variables\n');
         console.error(`Missing variables: ${missing.join(', ')}\n`);
-        console.error('🔧 Quick fix:');
-        console.error('   1. Run the setup wizard: npm run setup');
-        console.error('   2. Or manually create .env file with all required variables\n');
-        console.error('📖 See docs/QUICK_START.md for detailed instructions\n');
         throw new Error(
             `Missing required environment variables: ${missing.join(', ')}`
         );
@@ -49,17 +42,7 @@ const validateRequiredEnv = (): void => {
  */
 const validateAddresses = (): void => {
     if (process.env.PROXY_WALLET && !isValidEthereumAddress(process.env.PROXY_WALLET)) {
-        console.error('\n❌ Invalid Wallet Address\n');
-        console.error(`Your PROXY_WALLET: ${process.env.PROXY_WALLET}`);
-        console.error('Expected format:    0x followed by 40 hexadecimal characters\n');
-        console.error('Example: 0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0\n');
-        console.error('💡 Tips:');
-        console.error('   • Copy your wallet address from MetaMask');
-        console.error('   • Make sure it starts with 0x');
-        console.error('   • Should be exactly 42 characters long\n');
-        throw new Error(
-            `Invalid PROXY_WALLET address format: ${process.env.PROXY_WALLET}`
-        );
+        console.warn('\n⚠️ Invalid Wallet Address in .env. Will wait for database configuration.\n');
     }
 
     if (
@@ -173,14 +156,7 @@ const parseUserAddresses = (input: string): string[] => {
                 // Validate each address
                 for (const addr of addresses) {
                     if (!isValidEthereumAddress(addr)) {
-                        console.error('\n❌ Invalid Trader Address in USER_ADDRESSES\n');
-                        console.error(`Invalid address: ${addr}`);
-                        console.error('Expected format: 0x followed by 40 hexadecimal characters\n');
-                        console.error('💡 Where to find trader addresses:');
-                        console.error('   • Polymarket Leaderboard: https://polymarket.com/leaderboard');
-                        console.error('   • Polymarket Leaderboard: https://polymarket.com/leaderboard\n');
-                        console.error('Example: USER_ADDRESSES=\'0x7c3db723f1d4d8cb9c550095203b686cb11e5c6b\'\n');
-                        throw new Error(`Invalid Ethereum address in USER_ADDRESSES: ${addr}`);
+                        console.warn(`Invalid Ethereum address in USER_ADDRESSES: ${addr}`);
                     }
                 }
                 return addresses;
@@ -202,14 +178,7 @@ const parseUserAddresses = (input: string): string[] => {
     // Validate each address
     for (const addr of addresses) {
         if (!isValidEthereumAddress(addr)) {
-            console.error('\n❌ Invalid Trader Address in USER_ADDRESSES\n');
-            console.error(`Invalid address: ${addr}`);
-            console.error('Expected format: 0x followed by 40 hexadecimal characters\n');
-            console.error('💡 Where to find trader addresses:');
-            console.error('   • Polymarket Leaderboard: https://polymarket.com/leaderboard');
-            console.error('   • Polymarket Leaderboard: https://polymarket.com/leaderboard\n');
-            console.error('Example: USER_ADDRESSES=\'0x7c3db723f1d4d8cb9c550095203b686cb11e5c6b\'\n');
-            throw new Error(`Invalid Ethereum address in USER_ADDRESSES: ${addr}`);
+            console.warn(`Invalid Ethereum address in USER_ADDRESSES: ${addr}`);
         }
     }
     return addresses;

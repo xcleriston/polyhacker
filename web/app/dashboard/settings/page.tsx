@@ -1,29 +1,112 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/components/providers/AuthProvider';
+import { Settings, Save, AlertCircle, Loader2 } from 'lucide-react';
 
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
 
-  const envVars = [
-    { key: 'COPY_MODE', desc: 'NORMAL or MIRROR — MIRROR bypasses all filters', default: 'NORMAL' },
-    { key: 'MIRROR_SIZE_MODE', desc: 'PERCENTAGE | FIXED | ADAPTIVE', default: 'PERCENTAGE' },
-    { key: 'FIXED_AMOUNT', desc: 'USD per trade (FIXED mode only)', default: '10.0' },
-    { key: 'PROXY_WALLET', desc: 'Your Polygon wallet address', default: '' },
-    { key: 'PRIVATE_KEY', desc: 'Wallet private key (no 0x prefix)', default: '' },
-    { key: 'TELEGRAM_BOT_TOKEN', desc: 'Poly Hacker Bot token from @BotFather', default: '' },
-    { key: 'TELEGRAM_CHAT_ID', desc: 'Your Telegram user/chat ID', default: '' },
-    { key: 'DAILY_LOSS_CAP_PCT', desc: 'Kill switch threshold (%)', default: '20' },
-    { key: 'DATABASE_URL', desc: 'PostgreSQL connection string', default: 'postgresql://...' },
-    { key: 'JWT_SECRET', desc: 'Secret for signing JWT tokens', default: 'change-me' },
-  ];
+  const [formData, setFormData] = useState({
+    copyMode: 'NORMAL',
+    mirrorSizeMode: 'PERCENTAGE',
+    fixedAmount: '10.0',
+    copySize: '10.0',
+    proxyWallet: '',
+    privateKey: '',
+    dailyLossCapPct: '20.0',
+    telegramChatId: '',
+  });
+
+  useEffect(() => {
+    if (token) {
+      fetchSettings();
+    }
+  }, [token]);
+
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch('/api/settings', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setFormData({
+          copyMode: data.copyMode || 'NORMAL',
+          mirrorSizeMode: data.mirrorSizeMode || 'PERCENTAGE',
+          fixedAmount: data.fixedAmount?.toString() || '10.0',
+          copySize: data.copySize?.toString() || '10.0',
+          proxyWallet: data.proxyWallet || '',
+          privateKey: data.privateKey || '',
+          dailyLossCapPct: data.dailyLossCapPct?.toString() || '20.0',
+          telegramChatId: data.telegramChatId || '',
+        });
+      }
+    } catch (err) {
+      console.error('Failed to load settings', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    setSuccess(false);
+    setError('');
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError('');
+    setSuccess(false);
+
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(formData)
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to save settings');
+      }
+
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6 max-w-2xl pb-12">
       <div>
-        <h1 className="text-2xl font-bold text-white">Settings</h1>
-        <p className="text-slate-500 text-sm mt-1">Configuration reference for the Poly Hacker engine</p>
+        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+          <Settings className="w-6 h-6 text-violet-400" />
+          Bot Settings
+        </h1>
+        <p className="text-slate-500 text-sm mt-1">Configure your copy trading parameters and wallet.</p>
       </div>
 
       <Card>
@@ -43,31 +126,139 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-lg text-sm flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+          <p>{error}</p>
+        </div>
+      )}
+
       <Card>
         <CardHeader>
-          <CardTitle>Environment Variables</CardTitle>
+          <CardTitle>Wallet Configuration</CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-xs text-slate-500 mb-4">
-            Configure these in your <code className="text-violet-400">.env</code> file at the project root.
-          </p>
-          <div className="space-y-3">
-            {envVars.map(({ key, desc, default: def }) => (
-              <div key={key} className="p-3 rounded-xl bg-slate-800/40 border border-white/[0.05]">
-                <div className="flex items-center justify-between gap-2">
-                  <code className="text-xs font-mono text-violet-300">{key}</code>
-                  {def && (
-                    <span className="text-[10px] text-slate-500 font-mono bg-slate-700/50 px-2 py-0.5 rounded">
-                      default: {def}
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-slate-500 mt-1">{desc}</p>
-              </div>
-            ))}
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Proxy Wallet Address</label>
+            <Input 
+              name="proxyWallet" 
+              value={formData.proxyWallet} 
+              onChange={handleChange} 
+              placeholder="0x..." 
+            />
+            <p className="text-xs text-slate-500">Your Polygon wallet address used for executing trades.</p>
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Private Key</label>
+            <Input 
+              name="privateKey" 
+              type="password" 
+              value={formData.privateKey} 
+              onChange={handleChange} 
+              placeholder="64 hex characters (without 0x)" 
+            />
+            <p className="text-xs text-slate-500">Required for the bot to sign transactions. Never share this with anyone.</p>
           </div>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Trading Parameters</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Copy Mode</label>
+              <select 
+                name="copyMode" 
+                value={formData.copyMode} 
+                onChange={handleChange}
+                className="w-full h-10 px-3 rounded-md border border-slate-700 bg-slate-800 text-sm text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+              >
+                <option value="NORMAL">NORMAL</option>
+                <option value="MIRROR">MIRROR</option>
+              </select>
+              <p className="text-[10px] text-slate-500">Mirror bypasses filters.</p>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Size Mode</label>
+              <select 
+                name="mirrorSizeMode" 
+                value={formData.mirrorSizeMode} 
+                onChange={handleChange}
+                className="w-full h-10 px-3 rounded-md border border-slate-700 bg-slate-800 text-sm text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+              >
+                <option value="PERCENTAGE">PERCENTAGE</option>
+                <option value="FIXED">FIXED</option>
+                <option value="ADAPTIVE">ADAPTIVE</option>
+              </select>
+              <p className="text-[10px] text-slate-500">How to calculate position sizes.</p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Fixed Amount (USD)</label>
+              <Input 
+                name="fixedAmount" 
+                type="number" 
+                step="0.1" 
+                value={formData.fixedAmount} 
+                onChange={handleChange} 
+              />
+              <p className="text-[10px] text-slate-500">Only used if Size Mode is FIXED.</p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Copy Size (%)</label>
+              <Input 
+                name="copySize" 
+                type="number" 
+                step="0.1" 
+                value={formData.copySize} 
+                onChange={handleChange} 
+              />
+              <p className="text-[10px] text-slate-500">Percent of target's balance to copy.</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Risk Management & Notifications</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Daily Loss Cap (%)</label>
+            <Input 
+              name="dailyLossCapPct" 
+              type="number" 
+              step="1" 
+              value={formData.dailyLossCapPct} 
+              onChange={handleChange} 
+            />
+            <p className="text-xs text-slate-500">Kill switch threshold. Bot stops if daily losses exceed this.</p>
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Telegram Chat ID</label>
+            <Input 
+              name="telegramChatId" 
+              value={formData.telegramChatId} 
+              onChange={handleChange} 
+              placeholder="e.g. 123456789" 
+            />
+            <p className="text-xs text-slate-500">Receive trade alerts and errors in Telegram.</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex justify-end items-center gap-4">
+        {success && <span className="text-emerald-400 text-sm">Settings saved successfully!</span>}
+        <Button onClick={handleSave} disabled={saving} className="bg-violet-600 hover:bg-violet-700 w-32">
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Save className="w-4 h-4 mr-2" /> Save</>}
+        </Button>
+      </div>
     </div>
   );
 }

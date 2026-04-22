@@ -11,9 +11,10 @@ model User {
   id        String   @id @default(cuid())
   email     String   @unique
   password  String
-  createdAt DateTime @default(now())
+  createdAt DateTime   @default(now())
   traders   Trader[]
   trades    Trade[]
+  settings  Settings?
 }
 
 model Trader {
@@ -40,5 +41,19 @@ model Trade {
   transactionHash String?
   market          String?
   createdAt       DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Settings {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  copyMode        String   @default("NORMAL")
+  mirrorSizeMode  String   @default("PERCENTAGE")
+  fixedAmount     Float    @default(10.0)
+  copySize        Float    @default(10.0)
+  proxyWallet     String?
+  privateKey      String?
+  dailyLossCapPct Float    @default(20.0)
+  telegramChatId  String?
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

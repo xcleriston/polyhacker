@@ -64,11 +64,10 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 export const main = async () => {
     try {
-        // Private key format validation
+        // Private key format validation warning
         const pk = ENV.PRIVATE_KEY;
         if (!/^[0-9a-fA-F]{64}$/.test(pk)) {
-            console.error('\n❌ PRIVATE_KEY must be exactly 64 hex characters (without 0x prefix)\n');
-            process.exit(1);
+            console.warn('\n⚠️  No valid PRIVATE_KEY found in .env. The bot will wait for database configuration before trading.\n');
         }
 
         // Security warning
@@ -84,7 +83,13 @@ export const main = async () => {
         console.log(`   Run health check: ${colors.cyan}npm run health-check${colors.reset}\n`);
         
         await connectDB();
-        Logger.startup(USER_ADDRESSES, PROXY_WALLET);
+        
+        // Wait for database configuration before proceeding
+        const { waitForDatabaseConfig, fetchTargetTraders } = await import('./utils/settings');
+        await waitForDatabaseConfig();
+        await fetchTargetTraders();
+
+        Logger.startup(ENV.USER_ADDRESSES, ENV.PROXY_WALLET);
 
         // Perform initial health check
         Logger.info('Performing initial health check...');
