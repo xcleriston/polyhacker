@@ -471,7 +471,7 @@ const tradeExecutor = async (clobClient: ClobClient) => {
                 lastCheck = Date.now();
             } else {
                 if (Date.now() - lastCheck > 300) {
-                    Logger.waiting(USER_ADDRESSES.length);
+                    Logger.waiting(ENV.USER_ADDRESSES.length);
                     lastCheck = Date.now();
                 }
             }
