@@ -193,10 +193,10 @@ const loadPositions = async (address: string): Promise<Position[]> => {
     return positions.filter((pos) => (pos.size || 0) > ZERO_THRESHOLD);
 };
 
-const buildTrackedSet = async (): Promise<Set<string>> => {
+const buildTrackedSet = async (targetTraders: string[]): Promise<Set<string>> => {
     const tracked = new Set<string>();
 
-    for (const user of USER_ADDRESSES) {
+    for (const user of targetTraders) {
         try {
             const positions = await loadPositions(user);
             positions.forEach((pos) => {
@@ -211,6 +211,8 @@ const buildTrackedSet = async (): Promise<Set<string>> => {
 
     return tracked;
 };
+
+import { syncDatabase, ACTIVE_TENANTS, Tenant } from '../utils/settings';
 
 const logPositionHeader = (position: Position, index: number, total: number) => {
     console.log(`\n${index + 1}/${total} ▶ ${position.title || position.slug || position.asset}`);
@@ -229,56 +231,63 @@ const logPositionHeader = (position: Position, index: number, total: number) => 
 };
 
 const main = async () => {
-    console.log('🚀 Closing stale positions (tracked traders already exited)');
+    console.log('🚀 Closing stale positions for all active tenants');
     console.log('════════════════════════════════════════════════════');
-    console.log(`Wallet: ${PROXY_WALLET}`);
-
-    const clobClient = await createClobClient();
-    console.log('✅ Connected to Polymarket CLOB');
-
-    const [myPositions, trackedPositions] = await Promise.all([
-        loadPositions(PROXY_WALLET),
-        buildTrackedSet(),
-    ]);
-
-    if (myPositions.length === 0) {
-        console.log('\n🎉 No open positions detected for proxy wallet.');
+    
+    // Connect to DB and fetch active tenants
+    await syncDatabase();
+    
+    if (ACTIVE_TENANTS.length === 0) {
+        console.log('❌ No active tenants found in database.');
         return;
     }
 
-    const stalePositions = myPositions.filter(
-        (pos) => !trackedPositions.has(`${pos.conditionId}:${pos.asset}`)
-    );
+    for (const tenant of ACTIVE_TENANTS) {
+        if (!tenant.proxyWallet || !tenant.privateKey) continue;
+        
+        console.log(`\n👨‍💼 Processing Tenant: ${tenant.name || tenant.userId}`);
+        console.log(`Wallet: ${tenant.proxyWallet}`);
 
-    if (stalePositions.length === 0) {
-        console.log('\n✅ All positions still held by tracked traders. Nothing to close.');
-        return;
-    }
+        const clobClient = await createClobClient(tenant.privateKey, tenant.proxyWallet);
+        console.log('✅ Connected to Polymarket CLOB');
 
-    console.log(`\nFound ${stalePositions.length} stale position(s) to unwind.`);
+        const [myPositions, trackedPositions] = await Promise.all([
+            loadPositions(tenant.proxyWallet),
+            buildTrackedSet(tenant.targetTraders),
+        ]);
 
-    let totalTokens = 0;
-    let totalProceeds = 0;
+        if (myPositions.length === 0) {
+            console.log('🎉 No open positions detected.');
+            continue;
+        }
 
-    for (let i = 0; i < stalePositions.length; i += 1) {
-        const position = stalePositions[i];
-        logPositionHeader(position, i, stalePositions.length);
+        const stalePositions = myPositions.filter(
+            (pos) => !trackedPositions.has(`${pos.conditionId}:${pos.asset}`)
+        );
 
-        try {
-            const result = await sellEntirePosition(clobClient, position);
-            totalTokens += result.soldTokens;
-            totalProceeds += result.proceedsUsd;
-        } catch (error) {
-            console.log('   ❌ Failed to close position due to unexpected error:', error);
+        if (stalePositions.length === 0) {
+            console.log('✅ All positions still held by tracked traders. Nothing to close.');
+            continue;
+        }
+
+        console.log(`\nFound ${stalePositions.length} stale position(s) to unwind.`);
+
+        let totalTokens = 0;
+        let totalProceeds = 0;
+
+        for (let i = 0; i < stalePositions.length; i += 1) {
+            const position = stalePositions[i];
+            logPositionHeader(position, i, stalePositions.length);
+
+            try {
+                const result = await sellEntirePosition(clobClient, position);
+                totalTokens += result.soldTokens;
+                totalProceeds += result.proceedsUsd;
+            } catch (error) {
+                console.log('   ❌ Failed to close position due to unexpected error:', error);
+            }
         }
     }
-
-    console.log('\n════════════════════════════════════════════════════');
-    console.log('✅ Close-out summary');
-    console.log(`Markets touched: ${stalePositions.length}`);
-    console.log(`Tokens sold: ${totalTokens.toFixed(2)}`);
-    console.log(`USDC realized (approx.): $${totalProceeds.toFixed(2)}`);
-    console.log('════════════════════════════════════════════════════\n');
 };
 
 main()

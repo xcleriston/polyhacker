@@ -22,6 +22,7 @@ export default function SettingsPage() {
     proxyWallet: '',
     privateKey: '',
     dailyLossCapPct: '20.0',
+    telegramChatId: '',
   });
 
   useEffect(() => {
@@ -45,6 +46,7 @@ export default function SettingsPage() {
           proxyWallet: data.proxyWallet || '',
           privateKey: data.privateKey || '',
           dailyLossCapPct: data.dailyLossCapPct?.toString() || '20.0',
+          telegramChatId: data.telegramChatId || '',
         });
       }
     } catch (err) {
@@ -237,6 +239,16 @@ export default function SettingsPage() {
               onChange={handleChange} 
             />
             <p className="text-xs text-slate-500">Kill switch threshold. Bot stops if daily losses exceed this.</p>
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Telegram Chat ID</label>
+            <Input 
+              name="telegramChatId" 
+              value={formData.telegramChatId} 
+              onChange={handleChange} 
+              placeholder="e.g. 123456789" 
+            />
+            <p className="text-xs text-slate-500">Receive trade alerts and errors in Telegram.</p>
           </div>
         </CardContent>
       </Card>

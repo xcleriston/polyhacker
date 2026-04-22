@@ -39,6 +39,7 @@ export async function GET(req: NextRequest) {
         proxyWallet: '',
         privateKey: '',
         dailyLossCapPct: 20.0,
+        telegramChatId: '',
       });
     }
 
@@ -68,6 +69,7 @@ export async function POST(req: NextRequest) {
         proxyWallet: body.proxyWallet || '',
         privateKey: body.privateKey || '',
         dailyLossCapPct: parseFloat(body.dailyLossCapPct) || 20.0,
+        telegramChatId: body.telegramChatId || '',
       },
       create: {
         userId,
@@ -78,6 +80,7 @@ export async function POST(req: NextRequest) {
         proxyWallet: body.proxyWallet || '',
         privateKey: body.privateKey || '',
         dailyLossCapPct: parseFloat(body.dailyLossCapPct) || 20.0,
+        telegramChatId: body.telegramChatId || '',
       },
     });
 

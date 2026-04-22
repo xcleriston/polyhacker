@@ -16,13 +16,14 @@ async function checkAdmin(req: NextRequest) {
   return user;
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: any) {
   try {
     const adminUser = await checkAdmin(req);
     if (!adminUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
     const { email, password, name, role, active } = body;
+    const { id } = await params;
 
     const data: any = {};
     if (email) data.email = email;
@@ -38,7 +39,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     }
 
     const updatedUser = await prisma.user.update({
-      where: { id: params.id },
+      where: { id },
       data,
       select: {
         id: true,
@@ -57,17 +58,19 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: any) {
   try {
     const adminUser = await checkAdmin(req);
     if (!adminUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    if (adminUser.id === params.id) {
+    const { id } = await params;
+
+    if (adminUser.id === id) {
       return NextResponse.json({ error: 'Cannot delete your own admin account' }, { status: 400 });
     }
 
     await prisma.user.delete({
-      where: { id: params.id }
+      where: { id }
     });
 
     return NextResponse.json({ success: true });

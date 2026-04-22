@@ -57,5 +57,6 @@ model Settings {
   proxyWallet     String?
   privateKey      String?
   dailyLossCapPct Float    @default(20.0)
+  telegramChatId  String?
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

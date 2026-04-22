@@ -215,77 +215,85 @@ const logPositionHeader = (position: Position, index: number, total: number) => 
     }
 };
 
+import { syncDatabase, ACTIVE_TENANTS, Tenant } from '../utils/settings';
+
 const main = async () => {
-    console.log('🚀 Closing resolved positions');
+    console.log('🚀 Closing resolved positions for all active tenants');
     console.log('════════════════════════════════════════════════════');
-    console.log(`Wallet: ${PROXY_WALLET}`);
-    console.log(`Win threshold: price >= $${RESOLVED_HIGH}`);
-    console.log(`Loss threshold: price <= $${RESOLVED_LOW}`);
-
-    const clobClient = await createClobClient();
-    console.log('✅ Connected to Polymarket CLOB');
-
-    const allPositions = await loadPositions(PROXY_WALLET);
-
-    if (allPositions.length === 0) {
-        console.log('\n🎉 No open positions detected for proxy wallet.');
+    
+    // Connect to DB and fetch active tenants
+    await syncDatabase();
+    
+    if (ACTIVE_TENANTS.length === 0) {
+        console.log('❌ No active tenants found in database.');
         return;
     }
 
-    // Separate positions into resolved and active
-    const resolvedPositions = allPositions.filter(
-        (pos) => pos.curPrice >= RESOLVED_HIGH || pos.curPrice <= RESOLVED_LOW
-    );
+    for (const tenant of ACTIVE_TENANTS) {
+        if (!tenant.proxyWallet || !tenant.privateKey) continue;
+        
+        console.log(`\n👨‍💼 Processing Tenant: ${tenant.name || tenant.userId}`);
+        console.log(`Wallet: ${tenant.proxyWallet}`);
+        console.log(`Win threshold: price >= $${RESOLVED_HIGH}`);
+        console.log(`Loss threshold: price <= $${RESOLVED_LOW}`);
 
-    const activePositions = allPositions.filter(
-        (pos) => pos.curPrice > RESOLVED_LOW && pos.curPrice < RESOLVED_HIGH
-    );
+        const clobClient = await createClobClient(tenant.privateKey, tenant.proxyWallet);
+        console.log('✅ Connected to Polymarket CLOB');
 
-    console.log(`\n📊 Position statistics:`);
-    console.log(`   Total positions: ${allPositions.length}`);
-    console.log(`   ✅ Resolved (will be closed): ${resolvedPositions.length}`);
-    console.log(`   ⏳ Active (not touching): ${activePositions.length}`);
+        const allPositions = await loadPositions(tenant.proxyWallet);
 
-    if (activePositions.length > 0) {
-        console.log(`\n⏳ ACTIVE POSITIONS (NOT TOUCHING):`);
-        activePositions.forEach((pos, i) => {
-            console.log(`   ${i + 1}. ${pos.title || pos.slug || 'Unknown'}`);
-            console.log(`      Outcome: ${pos.outcome || 'N/A'}`);
-            console.log(`      Size: ${pos.size.toFixed(2)} tokens`);
-            console.log(`      Current price: $${pos.curPrice.toFixed(4)}`);
-            console.log(`      Value: $${pos.currentValue.toFixed(2)}`);
-        });
-    }
-
-    if (resolvedPositions.length === 0) {
-        console.log('\n✅ All positions are still active. Nothing to close.');
-        return;
-    }
-
-    console.log(`\n🔄 Closing ${resolvedPositions.length} resolved positions...`);
-
-    let totalTokens = 0;
-    let totalProceeds = 0;
-
-    for (let i = 0; i < resolvedPositions.length; i += 1) {
-        const position = resolvedPositions[i];
-        logPositionHeader(position, i, resolvedPositions.length);
-
-        try {
-            const result = await sellEntirePosition(clobClient, position);
-            totalTokens += result.soldTokens;
-            totalProceeds += result.proceedsUsd;
-        } catch (error) {
-            console.log('   ❌ Failed to close position due to unexpected error:', error);
+        if (allPositions.length === 0) {
+            console.log('🎉 No open positions detected.');
+            continue;
         }
-    }
 
-    console.log('\n════════════════════════════════════════════════════');
-    console.log('✅ Summary of closing resolved positions');
-    console.log(`Markets processed: ${resolvedPositions.length}`);
-    console.log(`Tokens sold: ${totalTokens.toFixed(2)}`);
-    console.log(`USDC received (approximately): $${totalProceeds.toFixed(2)}`);
-    console.log('════════════════════════════════════════════════════\n');
+        // Separate positions into resolved and active
+        const resolvedPositions = allPositions.filter(
+            (pos) => pos.curPrice >= RESOLVED_HIGH || pos.curPrice <= RESOLVED_LOW
+        );
+
+        const activePositions = allPositions.filter(
+            (pos) => pos.curPrice > RESOLVED_LOW && pos.curPrice < RESOLVED_HIGH
+        );
+
+        console.log(`\n📊 Position statistics:`);
+        console.log(`   Total positions: ${allPositions.length}`);
+        console.log(`   ✅ Resolved (will be closed): ${resolvedPositions.length}`);
+        console.log(`   ⏳ Active (not touching): ${activePositions.length}`);
+
+        if (activePositions.length > 0) {
+            console.log(`\n⏳ ACTIVE POSITIONS: ${activePositions.length}`);
+        }
+
+        if (resolvedPositions.length === 0) {
+            console.log('✅ All positions are still active. Nothing to close.');
+            continue;
+        }
+
+        console.log(`\n🔄 Closing ${resolvedPositions.length} resolved positions...`);
+
+        let totalTokens = 0;
+        let totalProceeds = 0;
+
+        for (let i = 0; i < resolvedPositions.length; i += 1) {
+            const position = resolvedPositions[i];
+            logPositionHeader(position, i, resolvedPositions.length);
+
+            try {
+                const result = await sellEntirePosition(clobClient, position);
+                totalTokens += result.soldTokens;
+                totalProceeds += result.proceedsUsd;
+            } catch (error) {
+                console.log('   ❌ Failed to close position:', error);
+            }
+        }
+        console.log('\n════════════════════════════════════════════════════');
+        console.log(`✅ Summary for ${tenant.name || tenant.userId}`);
+        console.log(`Markets processed: ${resolvedPositions.length}`);
+        console.log(`Tokens sold: ${totalTokens.toFixed(2)}`);
+        console.log(`USDC received (approximately): $${totalProceeds.toFixed(2)}`);
+        console.log('════════════════════════════════════════════════════\n');
+    }
 };
 
 main()

@@ -31,7 +31,7 @@ export async function syncDatabase() {
             SELECT 
                 u.id as "userId", u.name, 
                 s."privateKey", s."proxyWallet", s."copyMode", s."mirrorSizeMode", 
-                s."fixedAmount", s."copySize", s."dailyLossCapPct",
+                s."fixedAmount", s."copySize", s."dailyLossCapPct", s."telegramChatId",
                 COALESCE(
                     (SELECT json_agg(t."walletAddress") 
                      FROM "Trader" t 
@@ -61,7 +61,8 @@ export async function syncDatabase() {
                         mirrorSizeMode: row.mirrorSizeMode,
                         fixedAmount: row.fixedAmount,
                         copySize: row.copySize,
-                        dailyLossCapPct: row.dailyLossCapPct
+                        dailyLossCapPct: row.dailyLossCapPct,
+                        telegramChatId: row.telegramChatId || '',
                     }
                 });
                 targetTraders.forEach((t: string) => uniqueTraders.add(t));
