@@ -123,7 +123,8 @@ validateNumericConfig();
 validateUrls();
 
 // Parse USER_ADDRESSES: supports both comma-separated string and JSON array
-const parseUserAddresses = (input: string): string[] => {
+const parseUserAddresses = (input: string | undefined): string[] => {
+    if (!input) return [];
     const trimmed = input.trim();
     // Check if it's JSON array format
     if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
