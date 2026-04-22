@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/components/providers/AuthProvider';
-import { Settings, Save, AlertCircle, Loader2 } from 'lucide-react';
+import { Settings, Save, AlertCircle, Loader2, FlaskConical, ShieldAlert } from 'lucide-react';
 
 export default function SettingsPage() {
   const { user, token } = useAuth();
@@ -23,6 +23,7 @@ export default function SettingsPage() {
     privateKey: '',
     dailyLossCapPct: '20.0',
     telegramChatId: '',
+    testMode: true,
   });
 
   useEffect(() => {
@@ -47,6 +48,7 @@ export default function SettingsPage() {
           privateKey: data.privateKey || '',
           dailyLossCapPct: data.dailyLossCapPct?.toString() || '20.0',
           telegramChatId: data.telegramChatId || '',
+          testMode: data.testMode !== false, // default true
         });
       }
     } catch (err) {
@@ -59,6 +61,12 @@ export default function SettingsPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    setSuccess(false);
+    setError('');
+  };
+
+  const handleToggleTestMode = () => {
+    setFormData(prev => ({ ...prev, testMode: !prev.testMode }));
     setSuccess(false);
     setError('');
   };
@@ -79,7 +87,8 @@ export default function SettingsPage() {
       });
 
       if (!res.ok) {
-        throw new Error('Failed to save settings');
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to save settings');
       }
 
       setSuccess(true);
@@ -107,6 +116,39 @@ export default function SettingsPage() {
           Bot Settings
         </h1>
         <p className="text-slate-500 text-sm mt-1">Configure your copy trading parameters and wallet.</p>
+      </div>
+
+      {/* Test Mode Banner */}
+      <div
+        onClick={handleToggleTestMode}
+        className={`cursor-pointer rounded-xl border p-4 flex items-start gap-4 transition-all duration-300 select-none ${
+          formData.testMode
+            ? 'bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/15'
+            : 'bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/15'
+        }`}
+      >
+        <div className={`mt-0.5 rounded-lg p-2 ${formData.testMode ? 'bg-amber-500/20' : 'bg-emerald-500/20'}`}>
+          {formData.testMode
+            ? <FlaskConical className="w-5 h-5 text-amber-400" />
+            : <ShieldAlert className="w-5 h-5 text-emerald-400" />
+          }
+        </div>
+        <div className="flex-1">
+          <div className="flex items-center justify-between">
+            <p className={`font-semibold text-sm ${formData.testMode ? 'text-amber-300' : 'text-emerald-300'}`}>
+              {formData.testMode ? '🧪 Test Mode — ACTIVE (Paper Trading)' : '⚡ Live Mode — ACTIVE (Real Funds)'}
+            </p>
+            {/* Toggle pill */}
+            <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 ${formData.testMode ? 'bg-amber-500' : 'bg-emerald-500'}`}>
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-300 ${formData.testMode ? 'translate-x-1' : 'translate-x-6'}`} />
+            </div>
+          </div>
+          <p className="text-xs mt-1 text-slate-400">
+            {formData.testMode
+              ? 'Trades are detected and logged but NOT executed. No real funds are used. Click to switch to Live Mode.'
+              : 'Real trades will be submitted to Polymarket. Click to revert to safe Test Mode.'}
+          </p>
+        </div>
       </div>
 
       <Card>
@@ -140,22 +182,22 @@ export default function SettingsPage() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Proxy Wallet Address</label>
-            <Input 
-              name="proxyWallet" 
-              value={formData.proxyWallet} 
-              onChange={handleChange} 
-              placeholder="0x..." 
+            <Input
+              name="proxyWallet"
+              value={formData.proxyWallet}
+              onChange={handleChange}
+              placeholder="0x..."
             />
             <p className="text-xs text-slate-500">Your Polygon wallet address used for executing trades.</p>
           </div>
           <div className="space-y-2">
             <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Private Key</label>
-            <Input 
-              name="privateKey" 
-              type="password" 
-              value={formData.privateKey} 
-              onChange={handleChange} 
-              placeholder="64 hex characters (without 0x)" 
+            <Input
+              name="privateKey"
+              type="password"
+              value={formData.privateKey}
+              onChange={handleChange}
+              placeholder="64 hex characters (without 0x)"
             />
             <p className="text-xs text-slate-500">Required for the bot to sign transactions. Never share this with anyone.</p>
           </div>
@@ -170,9 +212,9 @@ export default function SettingsPage() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Copy Mode</label>
-              <select 
-                name="copyMode" 
-                value={formData.copyMode} 
+              <select
+                name="copyMode"
+                value={formData.copyMode}
                 onChange={handleChange}
                 className="w-full h-10 px-3 rounded-md border border-slate-700 bg-slate-800 text-sm text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
               >
@@ -181,12 +223,12 @@ export default function SettingsPage() {
               </select>
               <p className="text-[10px] text-slate-500">Mirror bypasses filters.</p>
             </div>
-            
+
             <div className="space-y-2">
               <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Size Mode</label>
-              <select 
-                name="mirrorSizeMode" 
-                value={formData.mirrorSizeMode} 
+              <select
+                name="mirrorSizeMode"
+                value={formData.mirrorSizeMode}
                 onChange={handleChange}
                 className="w-full h-10 px-3 rounded-md border border-slate-700 bg-slate-800 text-sm text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
               >
@@ -199,24 +241,24 @@ export default function SettingsPage() {
 
             <div className="space-y-2">
               <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Fixed Amount (USD)</label>
-              <Input 
-                name="fixedAmount" 
-                type="number" 
-                step="0.1" 
-                value={formData.fixedAmount} 
-                onChange={handleChange} 
+              <Input
+                name="fixedAmount"
+                type="number"
+                step="0.1"
+                value={formData.fixedAmount}
+                onChange={handleChange}
               />
               <p className="text-[10px] text-slate-500">Only used if Size Mode is FIXED.</p>
             </div>
 
             <div className="space-y-2">
               <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Copy Size (%)</label>
-              <Input 
-                name="copySize" 
-                type="number" 
-                step="0.1" 
-                value={formData.copySize} 
-                onChange={handleChange} 
+              <Input
+                name="copySize"
+                type="number"
+                step="0.1"
+                value={formData.copySize}
+                onChange={handleChange}
               />
               <p className="text-[10px] text-slate-500">Percent of target's balance to copy.</p>
             </div>
@@ -226,37 +268,37 @@ export default function SettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Risk Management & Notifications</CardTitle>
+          <CardTitle>Risk Management &amp; Notifications</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Daily Loss Cap (%)</label>
-            <Input 
-              name="dailyLossCapPct" 
-              type="number" 
-              step="1" 
-              value={formData.dailyLossCapPct} 
-              onChange={handleChange} 
+            <Input
+              name="dailyLossCapPct"
+              type="number"
+              step="1"
+              value={formData.dailyLossCapPct}
+              onChange={handleChange}
             />
             <p className="text-xs text-slate-500">Kill switch threshold. Bot stops if daily losses exceed this.</p>
           </div>
           <div className="space-y-2">
             <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Telegram Chat ID</label>
-            <Input 
-              name="telegramChatId" 
-              value={formData.telegramChatId} 
-              onChange={handleChange} 
-              placeholder="e.g. 123456789" 
+            <Input
+              name="telegramChatId"
+              value={formData.telegramChatId}
+              onChange={handleChange}
+              placeholder="e.g. 123456789"
             />
-            <p className="text-xs text-slate-500">Receive trade alerts and errors in Telegram.</p>
+            <p className="text-xs text-slate-500">Receive trade alerts and errors directly in Telegram.</p>
           </div>
         </CardContent>
       </Card>
 
       <div className="flex justify-end items-center gap-4">
-        {success && <span className="text-emerald-400 text-sm">Settings saved successfully!</span>}
+        {success && <span className="text-emerald-400 text-sm">✓ Settings saved successfully!</span>}
         <Button onClick={handleSave} disabled={saving} className="bg-violet-600 hover:bg-violet-700 w-32">
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Save className="w-4 h-4 mr-2" /> Save</>}
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Save className="w-4 h-4 mr-2" />Save</>}
         </Button>
       </div>
     </div>

@@ -58,5 +58,6 @@ model Settings {
   privateKey      String?
   dailyLossCapPct Float    @default(20.0)
   telegramChatId  String?
+  testMode        Boolean  @default(true)
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

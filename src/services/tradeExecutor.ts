@@ -12,7 +12,7 @@ import { ACTIVE_TENANTS, Tenant } from '../utils/settings';
 import createClobClient from '../utils/createClobClient';
 
 const TRADE_AGGREGATION_MIN_TOTAL_USD = 1.0; // Polymarket minimum
-const PREVIEW_MODE = process.env.PREVIEW_MODE === 'true';
+// testMode is now per-tenant, stored in the database and configurable per user in the dashboard.
 
 // Cache for ClobClients per tenant
 const clobClients = new Map<string, ClobClient>();
@@ -191,8 +191,8 @@ const doMirrorTrading = async (tenant: Tenant, clobClient: ClobClient, trades: T
             `[TRADE DETECTED] MIRROR | Tenant: ${tenant.name || tenant.userId} | ${trade.userAddress.slice(0, 6)}... | ${orderType} | size=$${trade.usdcSize} price=${trade.price}`
         );
 
-        if (PREVIEW_MODE) {
-            Logger.info('🔍 PREVIEW MODE — MIRROR trade logged but NOT executed');
+        if (tenant.settings.testMode) {
+            Logger.info(`🧪 [${tenant.name || tenant.userId}] TEST MODE — MIRROR trade detected but NOT executed (enable Live Mode in Settings)`);
             Logger.separator();
             continue;
         }
@@ -265,8 +265,8 @@ const doTrading = async (tenant: Tenant, clobClient: ClobClient, trades: TradeWi
             transactionHash: trade.transactionHash,
         });
 
-        if (PREVIEW_MODE) {
-            Logger.info('🔍 PREVIEW MODE — trade logged but NOT executed');
+        if (tenant.settings.testMode) {
+            Logger.info(`🧪 [${tenant.name || tenant.userId}] TEST MODE — trade detected but NOT executed (enable Live Mode in Settings)`);
             Logger.separator();
             continue;
         }
@@ -314,6 +314,12 @@ const doAggregatedTrading = async (tenant: Tenant, clobClient: ClobClient, aggre
 
         for (const trade of agg.trades) {
             await markTradeExecuted(tenant.userId, trade);
+        }
+
+        if (tenant.settings.testMode) {
+            Logger.info(`🧪 [${tenant.name || tenant.userId}] TEST MODE — aggregated trade detected but NOT executed (enable Live Mode in Settings)`);
+            Logger.separator();
+            continue;
         }
 
         const my_positions: UserPositionInterface[] = await fetchData(

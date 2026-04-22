@@ -6,7 +6,15 @@ export interface Tenant {
     name: string | null;
     privateKey: string;
     proxyWallet: string;
-    settings: any;
+    settings: {
+        copyMode: string;
+        mirrorSizeMode: string;
+        fixedAmount: number;
+        copySize: number;
+        dailyLossCapPct: number;
+        telegramChatId: string;
+        testMode: boolean;
+    };
     targetTraders: string[];
 }
 
@@ -26,12 +34,11 @@ export async function syncDatabase() {
         client = new Client({ connectionString: process.env.DATABASE_URL });
         await client.connect();
 
-        // Fetch active users with their settings and active traders
         const query = `
             SELECT 
                 u.id as "userId", u.name, 
                 s."privateKey", s."proxyWallet", s."copyMode", s."mirrorSizeMode", 
-                s."fixedAmount", s."copySize", s."dailyLossCapPct", s."telegramChatId",
+                s."fixedAmount", s."copySize", s."dailyLossCapPct", s."telegramChatId", s."testMode",
                 COALESCE(
                     (SELECT json_agg(t."walletAddress") 
                      FROM "Trader" t 
@@ -63,6 +70,7 @@ export async function syncDatabase() {
                         copySize: row.copySize,
                         dailyLossCapPct: row.dailyLossCapPct,
                         telegramChatId: row.telegramChatId || '',
+                        testMode: row.testMode !== false, // default true for safety
                     }
                 });
                 targetTraders.forEach((t: string) => uniqueTraders.add(t));

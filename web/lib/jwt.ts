@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'poly-hacker-secret-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET || 'railway_secret_polyhacker_99';
 
 export interface JWTPayload {
   userId: string;

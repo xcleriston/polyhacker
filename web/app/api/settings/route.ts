@@ -30,7 +30,6 @@ export async function GET(req: NextRequest) {
     });
 
     if (!settings) {
-      // Return defaults if none exist
       return NextResponse.json({
         copyMode: 'NORMAL',
         mirrorSizeMode: 'PERCENTAGE',
@@ -40,6 +39,7 @@ export async function GET(req: NextRequest) {
         privateKey: '',
         dailyLossCapPct: 20.0,
         telegramChatId: '',
+        testMode: true,
       });
     }
 
@@ -58,6 +58,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
+    const testMode = typeof body.testMode === 'boolean' ? body.testMode : true;
 
     const updated = await prisma.settings.upsert({
       where: { userId },
@@ -70,6 +71,7 @@ export async function POST(req: NextRequest) {
         privateKey: body.privateKey || '',
         dailyLossCapPct: parseFloat(body.dailyLossCapPct) || 20.0,
         telegramChatId: body.telegramChatId || '',
+        testMode,
       },
       create: {
         userId,
@@ -81,6 +83,7 @@ export async function POST(req: NextRequest) {
         privateKey: body.privateKey || '',
         dailyLossCapPct: parseFloat(body.dailyLossCapPct) || 20.0,
         telegramChatId: body.telegramChatId || '',
+        testMode,
       },
     });
 
