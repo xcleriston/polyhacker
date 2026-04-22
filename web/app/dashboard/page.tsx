@@ -89,6 +89,24 @@ export default function DashboardPage() {
     }
   };
 
+  const handleToggleTestMode = async () => {
+    if (!token || toggling) return;
+    setToggling(true);
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ testMode: !testMode }),
+      });
+      if (res.ok) {
+        const result = await res.json();
+        setTestMode(result.testMode);
+      }
+    } finally {
+      setToggling(false);
+    }
+  };
+
   const isRunning = botEnabled;
 
   const statCards = [
@@ -148,14 +166,19 @@ export default function DashboardPage() {
 
         <div className="flex items-center gap-4">
           {!loading && (
-            <div className={cn(
-              'hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider font-bold border',
-              isRunning
-                ? testMode
-                  ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
-                  : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                : 'bg-slate-800/50 border-slate-700/50 text-slate-500'
-            )}>
+            <button
+              onClick={handleToggleTestMode}
+              disabled={toggling}
+              className={cn(
+                'hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider font-bold border transition-all duration-300 hover:scale-105 active:scale-95',
+                isRunning
+                  ? testMode
+                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20'
+                    : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
+                  : 'bg-slate-800/50 border-slate-700/50 text-slate-500'
+              )}
+              title="Click to toggle Test/Live mode"
+            >
               <span className={cn(
                 'w-1.5 h-1.5 rounded-full',
                 isRunning
@@ -163,7 +186,7 @@ export default function DashboardPage() {
                   : 'bg-slate-600'
               )} />
               {isRunning ? (testMode ? 'Test Mode' : 'Live') : 'Stopped'}
-            </div>
+            </button>
           )}
 
           <button
@@ -171,7 +194,7 @@ export default function DashboardPage() {
             onClick={handleToggleBot}
             disabled={toggling || loading}
             className={cn(
-              'flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl',
+              'flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl hover:scale-105 active:scale-95',
               isRunning
                 ? 'bg-red-500 hover:bg-red-600 text-white shadow-red-500/20'
                 : 'bg-violet-600 hover:bg-violet-700 text-white shadow-violet-500/30'

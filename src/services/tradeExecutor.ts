@@ -361,7 +361,6 @@ const doAggregatedTrading = async (tenant: Tenant, clobClient: ClobClient, aggre
         Logger.separator();
     }
 };
-
 let isRunning = true;
 
 export const stopTradeExecutor = () => {
@@ -373,68 +372,105 @@ const tradeExecutor = async () => {
     Logger.success(`Multi-Tenant Trade executor ready`);
     
     let lastCheck = Date.now();
+    let lastCleanup = Date.now();
 
     while (isRunning) {
-        for (const tenant of ACTIVE_TENANTS) {
-            if (!tenant.settings.botEnabled) continue;
-            if (!tenant.targetTraders.length) continue;
+        try {
+            // Periodic cleanup of stale tenant data (every hour)
+            if (Date.now() - lastCleanup > 3600000) {
+                const activeUserIds = new Set(ACTIVE_TENANTS.map(t => t.userId));
+                
+                for (const userId of clobClients.keys()) {
+                    if (!activeUserIds.has(userId)) clobClients.delete(userId);
+                }
+                for (const userId of tradeAggregationBuffers.keys()) {
+                    if (!activeUserIds.has(userId)) tradeAggregationBuffers.delete(userId);
+                }
+                for (const userId of dailyStartBalances.keys()) {
+                    if (!activeUserIds.has(userId)) dailyStartBalances.delete(userId);
+                }
+                
+                lastCleanup = Date.now();
+                Logger.info('🧹 Stale tenant data cleaned up');
+            }
 
-            const trades = await readTempTradesForTenant(tenant);
-            if (trades.length === 0) continue; // Skip to next tenant if no trades
+            for (const tenant of ACTIVE_TENANTS) {
+                try {
+                    if (!tenant.settings.botEnabled) continue;
+                    if (!tenant.targetTraders.length) continue;
 
-            const clobClient = await getClobClientForTenant(tenant);
+                    const trades = await readTempTradesForTenant(tenant).catch(err => {
+                        Logger.error(`[${tenant.name || tenant.userId}] Error reading temp trades: ${err.message}`);
+                        return [] as TradeWithUser[];
+                    });
+                    
+                    if (trades.length === 0) continue;
 
-            if (tenant.settings.copyMode === 'MIRROR') {
-                Logger.clearLine();
-                await doMirrorTrading(tenant, clobClient, trades);
-                lastCheck = Date.now();
-            } else if (ENV.TRADE_AGGREGATION_ENABLED) {
-                Logger.clearLine();
-                Logger.info(`📥 ${trades.length} new trade(s) detected for ${tenant.name || tenant.userId}`);
+                    const clobClient = await getClobClientForTenant(tenant);
 
-                for (const trade of trades) {
-                    if (trade.side === 'BUY' && trade.usdcSize < TRADE_AGGREGATION_MIN_TOTAL_USD) {
-                        Logger.info(`Adding $${trade.usdcSize.toFixed(2)} ${trade.side} trade to aggregation buffer for ${trade.slug || trade.asset}`);
-                        addToAggregationBuffer(tenant, trade);
+                    if (tenant.settings.copyMode === 'MIRROR') {
+                        Logger.clearLine();
+                        await doMirrorTrading(tenant, clobClient, trades);
+                        lastCheck = Date.now();
+                    } else if (ENV.TRADE_AGGREGATION_ENABLED) {
+                        Logger.clearLine();
+                        Logger.info(`📥 ${trades.length} new trade(s) detected for ${tenant.name || tenant.userId}`);
+
+                        for (const trade of trades) {
+                            if (trade.side === 'BUY' && trade.usdcSize < TRADE_AGGREGATION_MIN_TOTAL_USD) {
+                                Logger.info(`Adding $${trade.usdcSize.toFixed(2)} ${trade.side} trade to aggregation buffer for ${trade.slug || trade.asset}`);
+                                addToAggregationBuffer(tenant, trade);
+                            } else {
+                                Logger.clearLine();
+                                Logger.header('⚡ IMMEDIATE TRADE (above threshold)');
+                                await doTrading(tenant, clobClient, [trade]);
+                            }
+                        }
+                        lastCheck = Date.now();
                     } else {
                         Logger.clearLine();
-                        Logger.header('⚡ IMMEDIATE TRADE (above threshold)');
-                        await doTrading(tenant, clobClient, [trade]);
+                        Logger.header(`⚡ ${trades.length} NEW TRADE(S) TO COPY FOR ${tenant.name || tenant.userId}`);
+                        await doTrading(tenant, clobClient, trades);
+                        lastCheck = Date.now();
                     }
+                } catch (tenantError) {
+                    Logger.error(`[${tenant.name || tenant.userId}] Error in tenant trade processing: ${tenantError instanceof Error ? tenantError.message : String(tenantError)}`);
+                }
+            }
+
+            // Process aggregations for all tenants
+            for (const tenant of ACTIVE_TENANTS) {
+                try {
+                    if (!tenant.settings.botEnabled) continue;
+                    const readyAggregations = getReadyAggregatedTrades(tenant);
+                    if (readyAggregations.length > 0) {
+                        const clobClient = await getClobClientForTenant(tenant);
+                        Logger.clearLine();
+                        Logger.header(`⚡ ${readyAggregations.length} AGGREGATED TRADE(S) READY FOR ${tenant.name || tenant.userId}`);
+                        await doAggregatedTrading(tenant, clobClient, readyAggregations);
+                        lastCheck = Date.now();
+                    }
+                } catch (aggError) {
+                    Logger.error(`[${tenant.name || tenant.userId}] Error processing aggregated trades: ${aggError instanceof Error ? aggError.message : String(aggError)}`);
+                }
+            }
+
+            if (Date.now() - lastCheck > 3000) {
+                let totalWaiting = 0;
+                for (const buffer of tradeAggregationBuffers.values()) {
+                    totalWaiting += buffer.size;
+                }
+                if (totalWaiting > 0) {
+                    Logger.waiting(ACTIVE_TENANTS.length, `${totalWaiting} trade group(s) pending across all tenants`);
+                } else {
+                    Logger.waiting(ACTIVE_TENANTS.length, 'SaaS Engine Active');
                 }
                 lastCheck = Date.now();
-            } else {
-                Logger.clearLine();
-                Logger.header(`⚡ ${trades.length} NEW TRADE(S) TO COPY FOR ${tenant.name || tenant.userId}`);
-                await doTrading(tenant, clobClient, trades);
-                lastCheck = Date.now();
             }
-        }
 
-        // Process aggregations for all tenants
-        for (const tenant of ACTIVE_TENANTS) {
-            if (!tenant.settings.botEnabled) continue;
-            const readyAggregations = getReadyAggregatedTrades(tenant);
-            if (readyAggregations.length > 0) {
-                const clobClient = await getClobClientForTenant(tenant);
-                Logger.clearLine();
-                Logger.header(`⚡ ${readyAggregations.length} AGGREGATED TRADE(S) READY FOR ${tenant.name || tenant.userId}`);
-                await doAggregatedTrading(tenant, clobClient, readyAggregations);
-                lastCheck = Date.now();
-            }
-        }
-
-        if (Date.now() - lastCheck > 3000) { // Log waiting every 3s instead of hammering
-            let totalWaiting = 0;
-            for (const buffer of tradeAggregationBuffers.values()) {
-                totalWaiting += buffer.size;
-            }
-            if (totalWaiting > 0) {
-                Logger.waiting(ACTIVE_TENANTS.length, `${totalWaiting} trade group(s) pending across all tenants`);
-            } else {
-                Logger.waiting(ACTIVE_TENANTS.length, 'SaaS Engine Active');
-            }
-            lastCheck = Date.now();
+        } catch (loopError) {
+            Logger.error(`FATAL error in trade executor loop: ${loopError instanceof Error ? loopError.message : String(loopError)}`);
+            await new Promise(resolve => setTimeout(resolve, 5000)); // Cool down
         }
 
         if (!isRunning) break;

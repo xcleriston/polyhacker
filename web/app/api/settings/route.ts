@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'railway_secret_polyhacker_99';
+import { verifyToken } from '@/lib/jwt';
 
 async function getUserId(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
@@ -10,12 +8,8 @@ async function getUserId(req: NextRequest) {
     return null;
   }
   const token = authHeader.split(' ')[1];
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-    return decoded.userId;
-  } catch (error) {
-    return null;
-  }
+  const payload = verifyToken(token);
+  return payload?.userId || null;
 }
 
 export async function GET(req: NextRequest) {

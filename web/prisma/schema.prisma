@@ -29,6 +29,7 @@ model Trader {
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, walletAddress])
+  @@index([userId])
 }
 
 model Trade {
@@ -45,6 +46,10 @@ model Trade {
   market          String?
   createdAt       DateTime @default(now())
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([traderAddress])
 }
 
 model Settings {
@@ -61,4 +66,6 @@ model Settings {
   testMode        Boolean  @default(true)
   botEnabled      Boolean  @default(false)
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

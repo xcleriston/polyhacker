@@ -14,7 +14,11 @@ const isValidEthereumAddress = (address: string): boolean => {
  * Validate required environment variables
  */
 const validateRequiredEnv = (): void => {
-    // We now use default fallbacks for system variables so they aren't strictly required.
+    const required = ['DATABASE_URL'];
+    const missing = required.filter((key) => !process.env[key]);
+    if (missing.length > 0) {
+        throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+    }
 };
 
 /**
@@ -22,7 +26,7 @@ const validateRequiredEnv = (): void => {
  */
 const validateAddresses = (): void => {
     if (process.env.PROXY_WALLET && !isValidEthereumAddress(process.env.PROXY_WALLET)) {
-        console.warn('\n⚠️ Invalid Wallet Address in .env. Will wait for database configuration.\n');
+        throw new Error(`Invalid PROXY_WALLET: ${process.env.PROXY_WALLET}. Must be a valid Ethereum address.`);
     }
 
     if (
@@ -137,7 +141,7 @@ const parseUserAddresses = (input: string | undefined): string[] => {
                 // Validate each address
                 for (const addr of addresses) {
                     if (!isValidEthereumAddress(addr)) {
-                        console.warn(`Invalid Ethereum address in USER_ADDRESSES: ${addr}`);
+                        throw new Error(`Invalid Ethereum address: ${addr}`);
                     }
                 }
                 return addresses;
@@ -159,7 +163,7 @@ const parseUserAddresses = (input: string | undefined): string[] => {
     // Validate each address
     for (const addr of addresses) {
         if (!isValidEthereumAddress(addr)) {
-            console.warn(`Invalid Ethereum address in USER_ADDRESSES: ${addr}`);
+            throw new Error(`Invalid Ethereum address: ${addr}`);
         }
     }
     return addresses;

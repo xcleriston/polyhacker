@@ -10,6 +10,7 @@ describe('env.ts configuration', () => {
         CLOB_WS_URL: 'wss://ws-subscriptions-clob.polymarket.com/ws',
         RPC_URL: 'https://polygon-rpc.com',
         USDC_CONTRACT_ADDRESS: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174',
+        DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
     };
 
     beforeEach(() => {

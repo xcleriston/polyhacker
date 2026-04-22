@@ -25,10 +25,13 @@ export async function GET(req: NextRequest) {
   ]);
 
   // Self-heal: Make the first/only user an Admin and Active automatically
+  // Also auto-activate the primary admin email for convenience
   let role = dbUser?.role || 'USER';
   let active = dbUser?.active || false;
   
-  if (totalUsers === 1 && (role !== 'ADMIN' || !active)) {
+  const isPrimaryAdmin = dbUser?.email === 'admin@polyhacker.com';
+
+  if ((totalUsers === 1 || isPrimaryAdmin) && (role !== 'ADMIN' || !active)) {
     await prisma.user.update({
       where: { id: user.userId },
       data: { role: 'ADMIN', active: true }

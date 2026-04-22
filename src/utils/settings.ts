@@ -1,5 +1,23 @@
-import { Client } from 'pg';
+import { Pool } from 'pg';
 import { ENV } from '../config/env';
+
+// Database connection pool for performance and resilience
+let pool: Pool | null = null;
+
+const getPool = () => {
+    if (!pool) {
+        if (!process.env.DATABASE_URL) {
+            throw new Error('DATABASE_URL is not defined');
+        }
+        pool = new Pool({
+            connectionString: process.env.DATABASE_URL,
+            max: 5, // Limit connections in multi-tenant environment
+            idleTimeoutMillis: 30000,
+            connectionTimeoutMillis: 5000,
+        });
+    }
+    return pool;
+};
 
 export interface Tenant {
     userId: string;
@@ -25,16 +43,9 @@ export let GLOBAL_TARGET_TRADERS: string[] = [];
 let syncInterval: NodeJS.Timeout | null = null;
 
 export async function syncDatabase() {
-    let client: Client | null = null;
     try {
-        if (!process.env.DATABASE_URL) {
-            console.error('❌ No DATABASE_URL found in environment variables!');
-            return false;
-        }
-
-        client = new Client({ connectionString: process.env.DATABASE_URL });
-        await client.connect();
-
+        const pool = getPool();
+        
         const query = `
             SELECT 
                 u.id as "userId", u.name, 
@@ -51,7 +62,7 @@ export async function syncDatabase() {
             WHERE u.active = true;
         `;
         
-        const res = await client.query(query);
+        const res = await pool.query(query);
         const newTenants: Tenant[] = [];
         const uniqueTraders = new Set<string>();
 
@@ -89,12 +100,8 @@ export async function syncDatabase() {
 
         return newTenants.length > 0;
     } catch (error) {
-        console.error('❌ Database sync error:', error);
+        console.error('❌ Database sync error:', error instanceof Error ? error.message : String(error));
         return false;
-    } finally {
-        if (client) {
-            try { await client.end(); } catch (e) { /* ignore */ }
-        }
     }
 }
 
