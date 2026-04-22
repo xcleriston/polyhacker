@@ -4,8 +4,6 @@ import { SignatureType } from '@polymarket/order-utils';
 import { ENV } from '../config/env';
 import Logger from './logger';
 
-const PROXY_WALLET = ENV.PROXY_WALLET;
-const PRIVATE_KEY = ENV.PRIVATE_KEY;
 const CLOB_HTTP_URL = ENV.CLOB_HTTP_URL;
 const RPC_URL = ENV.RPC_URL;
 /**
@@ -24,17 +22,13 @@ const isGnosisSafe = async (address: string): Promise<boolean> => {
     }
 };
 
-const createClobClient = async (): Promise<ClobClient> => {
+const createClobClient = async (privateKey: string, proxyWallet: string): Promise<ClobClient> => {
     const chainId = 137;
     const host = CLOB_HTTP_URL as string;
-    const wallet = new ethers.Wallet(PRIVATE_KEY as string);
+    const wallet = new ethers.Wallet(privateKey);
     // Detect if the proxy wallet is a Gnosis Safe or EOA
-    const isProxySafe = await isGnosisSafe(PROXY_WALLET as string);
+    const isProxySafe = proxyWallet ? await isGnosisSafe(proxyWallet) : false;
     const signatureType = isProxySafe ? SignatureType.POLY_GNOSIS_SAFE : SignatureType.EOA;
-
-    Logger.info(
-        `Wallet type detected: ${isProxySafe ? 'Gnosis Safe' : 'EOA (Externally Owned Account)'}`
-    );
 
     let clobClient = new ClobClient(
         host,
@@ -42,7 +36,7 @@ const createClobClient = async (): Promise<ClobClient> => {
         wallet,
         undefined,
         signatureType,
-        isProxySafe ? (PROXY_WALLET as string) : undefined
+        isProxySafe ? proxyWallet : undefined
     );
 
     // Suppress console output during API key creation
@@ -62,7 +56,7 @@ const createClobClient = async (): Promise<ClobClient> => {
         wallet,
         creds,
         signatureType,
-        isProxySafe ? (PROXY_WALLET as string) : undefined
+        isProxySafe ? proxyWallet : undefined
     );
 
     // Restore console functions

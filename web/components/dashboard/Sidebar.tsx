@@ -9,8 +9,10 @@ import {
   LogOut,
   Zap,
   Settings,
+  Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useState, useEffect } from 'react';
 
 const navItems = [
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
@@ -22,6 +24,18 @@ const navItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const [userRole, setUserRole] = useState<string>('USER');
+
+  useEffect(() => {
+    const token = localStorage.getItem('ph_token');
+    if (!token) return;
+    fetch('/api/dashboard', { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.userRole) setUserRole(data.userRole);
+      })
+      .catch(() => {});
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('ph_token');
@@ -61,6 +75,20 @@ export function Sidebar() {
             </Link>
           );
         })}
+        {userRole === 'ADMIN' && (
+          <Link
+            href="/dashboard/admin"
+            className={cn(
+              'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 mt-4',
+              pathname === '/dashboard/admin'
+                ? 'bg-violet-600/20 text-violet-300 border border-violet-500/20'
+                : 'text-slate-500 hover:text-slate-200 hover:bg-white/[0.04]'
+            )}
+          >
+            <Shield size={16} />
+            Admin Panel
+          </Link>
+        )}
       </nav>
 
       {/* Logout */}

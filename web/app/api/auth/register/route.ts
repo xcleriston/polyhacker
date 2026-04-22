@@ -21,8 +21,16 @@ export async function POST(req: NextRequest) {
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
+    const userCount = await prisma.user.count();
+    const isFirstUser = userCount === 0;
+
     const user = await prisma.user.create({
-      data: { email, password: hashedPassword },
+      data: { 
+        email, 
+        password: hashedPassword,
+        role: isFirstUser ? 'ADMIN' : 'USER',
+        active: isFirstUser ? true : false,
+      },
     });
 
     const token = signToken({ userId: user.id, email: user.email });

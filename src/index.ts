@@ -100,10 +100,6 @@ export const main = async () => {
             Logger.warning('Health check failed, but continuing startup...');
         }
 
-        Logger.info('Initializing CLOB client...');
-        const clobClient = await createClobClient();
-        Logger.success('CLOB client ready');
-
         // Send Telegram startup notification if enabled
         const myBalance = await import('./utils/getMyBalance').then(m => m.default(ENV.PROXY_WALLET)).catch(() => 0);
         await import('./utils/telegram').then(m => m.default.startup(ENV.USER_ADDRESSES.length, myBalance));
@@ -112,8 +108,8 @@ export const main = async () => {
         Logger.info('Starting trade monitor...');
         tradeMonitor();
 
-        Logger.info('Starting trade executor...');
-        tradeExecutor(clobClient);
+        Logger.info('Starting multi-tenant trade executor...');
+        tradeExecutor();
 
         // Start web UI + API server
         startServer();

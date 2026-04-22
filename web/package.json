@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "npx prisma@5.22.0 db push --accept-data-loss --skip-generate && npx next start",
     "lint": "eslint",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",

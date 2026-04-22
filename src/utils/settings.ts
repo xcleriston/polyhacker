@@ -1,56 +1,110 @@
 import { Client } from 'pg';
 import { ENV } from '../config/env';
 
+export interface Tenant {
+    userId: string;
+    name: string | null;
+    privateKey: string;
+    proxyWallet: string;
+    settings: any;
+    targetTraders: string[];
+}
+
+export let ACTIVE_TENANTS: Tenant[] = [];
+export let GLOBAL_TARGET_TRADERS: string[] = [];
+
+let syncInterval: NodeJS.Timeout | null = null;
+
+export async function syncDatabase() {
+    let client: Client | null = null;
+    try {
+        if (!process.env.DATABASE_URL) {
+            console.error('❌ No DATABASE_URL found in environment variables!');
+            return false;
+        }
+
+        client = new Client({ connectionString: process.env.DATABASE_URL });
+        await client.connect();
+
+        // Fetch active users with their settings and active traders
+        const query = `
+            SELECT 
+                u.id as "userId", u.name, 
+                s."privateKey", s."proxyWallet", s."copyMode", s."mirrorSizeMode", 
+                s."fixedAmount", s."copySize", s."dailyLossCapPct",
+                COALESCE(
+                    (SELECT json_agg(t."walletAddress") 
+                     FROM "Trader" t 
+                     WHERE t."userId" = u.id AND t."active" = true), 
+                    '[]'::json
+                ) as "traders"
+            FROM "User" u
+            INNER JOIN "Settings" s ON u.id = s."userId"
+            WHERE u.active = true;
+        `;
+        
+        const res = await client.query(query);
+        const newTenants: Tenant[] = [];
+        const uniqueTraders = new Set<string>();
+
+        for (const row of res.rows) {
+            if (row.privateKey && row.privateKey.length === 64) {
+                const targetTraders = (row.traders || []).map((t: string) => t.toLowerCase());
+                newTenants.push({
+                    userId: row.userId,
+                    name: row.name,
+                    privateKey: row.privateKey,
+                    proxyWallet: row.proxyWallet || '',
+                    targetTraders,
+                    settings: {
+                        copyMode: row.copyMode,
+                        mirrorSizeMode: row.mirrorSizeMode,
+                        fixedAmount: row.fixedAmount,
+                        copySize: row.copySize,
+                        dailyLossCapPct: row.dailyLossCapPct
+                    }
+                });
+                targetTraders.forEach((t: string) => uniqueTraders.add(t));
+            }
+        }
+
+        ACTIVE_TENANTS = newTenants;
+        GLOBAL_TARGET_TRADERS = Array.from(uniqueTraders);
+
+        // For backward compatibility with modules expecting ENV to be populated
+        if (GLOBAL_TARGET_TRADERS.length > 0) {
+            ENV.USER_ADDRESSES = GLOBAL_TARGET_TRADERS;
+        }
+
+        return newTenants.length > 0;
+    } catch (error) {
+        console.error('❌ Database sync error:', error);
+        return false;
+    } finally {
+        if (client) {
+            try { await client.end(); } catch (e) { /* ignore */ }
+        }
+    }
+}
+
 export async function waitForDatabaseConfig() {
     console.log('🔄 Checking database for bot configurations...');
 
     while (true) {
-        let client: Client | null = null;
-        try {
-            if (!process.env.DATABASE_URL) {
-                console.error('❌ No DATABASE_URL found in environment variables!');
-                await new Promise(resolve => setTimeout(resolve, 10000));
-                continue;
+        const hasValidTenants = await syncDatabase();
+        
+        if (hasValidTenants) {
+            console.log(`✅ Multi-Tenant Sync: Loaded ${ACTIVE_TENANTS.length} active users and ${GLOBAL_TARGET_TRADERS.length} unique traders.`);
+            
+            // Start the background sync loop (every 10 seconds)
+            if (!syncInterval) {
+                syncInterval = setInterval(() => {
+                    syncDatabase().catch(() => {});
+                }, 10000);
             }
-
-            client = new Client({ connectionString: process.env.DATABASE_URL });
-            await client.connect();
-
-            const res = await client.query('SELECT * FROM "Settings" LIMIT 1');
-            const settings = res.rows[0];
-
-            if (settings && settings.privateKey && settings.privateKey.length === 64) {
-                // Update global ENV with database settings
-                ENV.PRIVATE_KEY = settings.privateKey;
-                ENV.PROXY_WALLET = settings.proxyWallet || '';
-                
-                // Also update other parameters
-                if (settings.copyMode === 'MIRROR') {
-                    ENV.COPY_STRATEGY_CONFIG.strategy = 'MIRROR' as any;
-                }
-                ENV.COPY_STRATEGY_CONFIG.copySize = settings.copySize;
-                
-                // Telegram setting
-                if (settings.telegramChatId) {
-                    ENV.TELEGRAM_CHAT_ID = settings.telegramChatId;
-                }
-                
-                console.log('✅ Configuration loaded from Database successfully.');
-                await client.end();
-                return settings;
-            } else {
-                console.log('⏳ Waiting for valid configuration in the Web Dashboard...');
-            }
-        } catch (error) {
-            console.error('❌ Database connection error while fetching settings:', error);
-        } finally {
-            if (client) {
-                try {
-                    await client.end();
-                } catch (e) {
-                    // ignore
-                }
-            }
+            return true;
+        } else {
+            console.log('⏳ Waiting for valid user configurations in the Web Dashboard...');
         }
         
         // Wait 10 seconds before polling again
@@ -59,31 +113,6 @@ export async function waitForDatabaseConfig() {
 }
 
 export async function fetchTargetTraders() {
-    let client: Client | null = null;
-    try {
-        if (!process.env.DATABASE_URL) return ENV.USER_ADDRESSES;
-
-        client = new Client({ connectionString: process.env.DATABASE_URL });
-        await client.connect();
-
-        const res = await client.query('SELECT "walletAddress" FROM "Trader" WHERE "active" = true');
-        const addresses = res.rows.map((row: any) => row.walletAddress.toLowerCase());
-        
-        // Update global ENV
-        if (addresses.length > 0) {
-            ENV.USER_ADDRESSES = addresses;
-        }
-        return addresses;
-    } catch (error) {
-        console.error('Failed to fetch traders from DB', error);
-        return ENV.USER_ADDRESSES;
-    } finally {
-        if (client) {
-            try {
-                await client.end();
-            } catch (e) {
-                // ignore
-            }
-        }
-    }
+    // Legacy function, now handled by syncDatabase
+    return GLOBAL_TARGET_TRADERS.length > 0 ? GLOBAL_TARGET_TRADERS : ENV.USER_ADDRESSES;
 }

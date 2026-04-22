@@ -8,46 +8,59 @@ import postOrder from '../utils/postOrder';
 import Logger from '../utils/logger';
 import telegram from '../utils/telegram';
 import { CopyMode, calculateMirrorSize } from '../config/mirrorMode';
+import { ACTIVE_TENANTS, Tenant } from '../utils/settings';
+import createClobClient from '../utils/createClobClient';
 
 const TRADE_AGGREGATION_MIN_TOTAL_USD = 1.0; // Polymarket minimum
 const PREVIEW_MODE = process.env.PREVIEW_MODE === 'true';
 
-// Daily loss tracking — disabled in MIRROR mode
-let dailyStartBalance: number | null = null;
-let dailyStartDate = '';
-let killSwitchTriggered = false;
-const DAILY_LOSS_CAP_PCT = parseFloat(process.env.DAILY_LOSS_CAP_PCT || '20');
+// Cache for ClobClients per tenant
+const clobClients = new Map<string, ClobClient>();
 
-const checkDailyLoss = async (): Promise<boolean> => {
-    // MIRROR mode: skip kill-switch / daily-loss check entirely
-    if (ENV.MIRROR_CONFIG.copyMode === CopyMode.MIRROR) return true;
+const getClobClientForTenant = async (tenant: Tenant): Promise<ClobClient> => {
+    if (!clobClients.has(tenant.userId)) {
+        Logger.info(`[Multi-Tenant] Initializing CLOB Client for user ${tenant.name || tenant.userId}`);
+        const client = await createClobClient(tenant.privateKey, tenant.proxyWallet);
+        clobClients.set(tenant.userId, client);
+    }
+    return clobClients.get(tenant.userId)!;
+};
+
+// Daily loss tracking per tenant
+const dailyStartBalances = new Map<string, number>();
+const dailyStartDates = new Map<string, string>();
+const killSwitches = new Map<string, boolean>();
+
+const checkDailyLoss = async (tenant: Tenant): Promise<boolean> => {
+    // MIRROR mode: skip kill-switch
+    if (tenant.settings.copyMode === 'MIRROR') return true;
 
     const today = new Date().toISOString().split('T')[0];
-    const currentBalance = await getMyBalance(ENV.PROXY_WALLET);
+    const currentBalance = await getMyBalance(tenant.proxyWallet);
+    const userId = tenant.userId;
 
-    if (dailyStartDate !== today) {
-        dailyStartDate = today;
-        dailyStartBalance = currentBalance;
-        Logger.info(`📅 Daily balance reset: $${currentBalance.toFixed(2)}`);
+    if (dailyStartDates.get(userId) !== today) {
+        dailyStartDates.set(userId, today);
+        dailyStartBalances.set(userId, currentBalance);
+        Logger.info(`📅 [${tenant.name || userId}] Daily balance reset: $${currentBalance.toFixed(2)}`);
     }
 
-    if (dailyStartBalance !== null && dailyStartBalance > 0) {
-        const lossPct = ((dailyStartBalance - currentBalance) / dailyStartBalance) * 100;
-        if (lossPct >= DAILY_LOSS_CAP_PCT) {
-            Logger.error(`🛑 KILL SWITCH: Daily loss ${lossPct.toFixed(1)}% exceeds ${DAILY_LOSS_CAP_PCT}% cap. Trading halted.`);
-            killSwitchTriggered = true;
-            telegram.killSwitch(lossPct);
+    const startBalance = dailyStartBalances.get(userId);
+    if (startBalance !== undefined && startBalance !== null && startBalance > 0) {
+        const lossPct = ((startBalance - currentBalance) / startBalance) * 100;
+        const capPct = tenant.settings.dailyLossCapPct || 20.0;
+        
+        if (lossPct >= capPct) {
+            if (!killSwitches.get(userId)) {
+                Logger.error(`🛑 [${tenant.name || userId}] KILL SWITCH: Daily loss ${lossPct.toFixed(1)}% exceeds ${capPct}% cap. Trading halted.`);
+                killSwitches.set(userId, true);
+                telegram.killSwitch(lossPct); // Note: still sends to global admin chat
+            }
             return false;
         }
     }
     return true;
 };
-
-// Create activity models for each user dynamically
-const getUserActivityModels = () => ENV.USER_ADDRESSES.map((address) => ({
-    address,
-    model: getUserActivityModel(address),
-}));
 
 interface TradeWithUser extends UserActivityInterface {
     userAddress: string;
@@ -67,17 +80,27 @@ interface AggregatedTrade {
     lastTradeTime: number;
 }
 
-// Buffer for aggregating trades (only used in NORMAL mode)
-const tradeAggregationBuffer: Map<string, AggregatedTrade> = new Map();
+// Buffer for aggregating trades (per tenant)
+const tradeAggregationBuffers = new Map<string, Map<string, AggregatedTrade>>();
 
-const readTempTrades = async (): Promise<TradeWithUser[]> => {
+const getBufferForTenant = (userId: string) => {
+    if (!tradeAggregationBuffers.has(userId)) {
+        tradeAggregationBuffers.set(userId, new Map());
+    }
+    return tradeAggregationBuffers.get(userId)!;
+};
+
+const readTempTradesForTenant = async (tenant: Tenant): Promise<TradeWithUser[]> => {
     const allTrades: TradeWithUser[] = [];
-    const userActivityModels = getUserActivityModels();
 
-    for (const { address, model } of userActivityModels) {
+    for (const address of tenant.targetTraders) {
+        const model = getUserActivityModel(address);
         const trades = await model
             .find({
-                $and: [{ type: 'TRADE' }, { bot: false }, { botExcutedTime: 0 }],
+                $and: [
+                    { type: 'TRADE' },
+                    { executedBy: { $ne: tenant.userId } }
+                ],
             })
             .exec();
 
@@ -92,19 +115,14 @@ const readTempTrades = async (): Promise<TradeWithUser[]> => {
     return allTrades;
 };
 
-/**
- * Generate a unique key for trade aggregation based on user, market, side
- */
 const getAggregationKey = (trade: TradeWithUser): string => {
     return `${trade.userAddress}:${trade.conditionId}:${trade.asset}:${trade.side}`;
 };
 
-/**
- * Add trade to aggregation buffer or update existing aggregation
- */
-const addToAggregationBuffer = (trade: TradeWithUser): void => {
+const addToAggregationBuffer = (tenant: Tenant, trade: TradeWithUser): void => {
+    const buffer = getBufferForTenant(tenant.userId);
     const key = getAggregationKey(trade);
-    const existing = tradeAggregationBuffer.get(key);
+    const existing = buffer.get(key);
     const now = Date.now();
 
     if (existing) {
@@ -114,7 +132,7 @@ const addToAggregationBuffer = (trade: TradeWithUser): void => {
         existing.averagePrice = totalValue / existing.totalUsdcSize;
         existing.lastTradeTime = now;
     } else {
-        tradeAggregationBuffer.set(key, {
+        buffer.set(key, {
             userAddress: trade.userAddress,
             conditionId: trade.conditionId,
             asset: trade.asset,
@@ -130,15 +148,13 @@ const addToAggregationBuffer = (trade: TradeWithUser): void => {
     }
 };
 
-/**
- * Check buffer and return ready aggregated trades (NORMAL mode only)
- */
-const getReadyAggregatedTrades = (): AggregatedTrade[] => {
+const getReadyAggregatedTrades = (tenant: Tenant): AggregatedTrade[] => {
     const ready: AggregatedTrade[] = [];
     const now = Date.now();
     const windowMs = ENV.TRADE_AGGREGATION_WINDOW_SECONDS * 1000;
+    const buffer = getBufferForTenant(tenant.userId);
 
-    for (const [key, agg] of tradeAggregationBuffer.entries()) {
+    for (const [key, agg] of buffer.entries()) {
         const timeElapsed = now - agg.firstTradeTime;
 
         if (timeElapsed >= windowMs) {
@@ -146,46 +162,43 @@ const getReadyAggregatedTrades = (): AggregatedTrade[] => {
                 ready.push(agg);
             } else {
                 Logger.info(
-                    `Trade aggregation for ${agg.userAddress} on ${agg.slug || agg.asset}: $${agg.totalUsdcSize.toFixed(2)} total from ${agg.trades.length} trades below minimum ($${TRADE_AGGREGATION_MIN_TOTAL_USD}) - skipping`
+                    `[${tenant.name || tenant.userId}] Trade aggregation for ${agg.userAddress} on ${agg.slug || agg.asset}: $${agg.totalUsdcSize.toFixed(2)} total from ${agg.trades.length} trades below minimum ($${TRADE_AGGREGATION_MIN_TOTAL_USD}) - skipping`
                 );
 
                 for (const trade of agg.trades) {
                     const UserActivity = getUserActivityModel(trade.userAddress);
-                    UserActivity.updateOne({ _id: trade._id }, { bot: true }).exec();
+                    UserActivity.updateOne({ _id: trade._id }, { $push: { executedBy: tenant.userId } }).exec();
                 }
             }
-            tradeAggregationBuffer.delete(key);
+            buffer.delete(key);
         }
     }
 
     return ready;
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MIRROR MODE EXECUTION ENGINE
-// detect → transform(size only) → execute immediately (no batching)
-// ─────────────────────────────────────────────────────────────────────────────
-const doMirrorTrading = async (clobClient: ClobClient, trades: TradeWithUser[]) => {
+const markTradeExecuted = async (tenantId: string, trade: TradeWithUser) => {
+    const UserActivity = getUserActivityModel(trade.userAddress);
+    await UserActivity.updateOne({ _id: trade._id }, { $push: { executedBy: tenantId } });
+};
+
+const doMirrorTrading = async (tenant: Tenant, clobClient: ClobClient, trades: TradeWithUser[]) => {
     for (const trade of trades) {
-        // Mark as being processed to prevent duplicate execution
-        const UserActivity = getUserActivityModel(trade.userAddress);
-        await UserActivity.updateOne({ _id: trade._id }, { $set: { botExcutedTime: 1 } });
+        await markTradeExecuted(tenant.userId, trade);
 
         const orderType = trade.orderType ?? 'MARKET';
         Logger.info(
-            `[TRADE DETECTED] MIRROR | ${trade.userAddress.slice(0, 6)}...${trade.userAddress.slice(-4)} | ${orderType} | size=$${trade.usdcSize} price=${trade.price}`
+            `[TRADE DETECTED] MIRROR | Tenant: ${tenant.name || tenant.userId} | ${trade.userAddress.slice(0, 6)}... | ${orderType} | size=$${trade.usdcSize} price=${trade.price}`
         );
 
         if (PREVIEW_MODE) {
             Logger.info('🔍 PREVIEW MODE — MIRROR trade logged but NOT executed');
-            await UserActivity.updateOne({ _id: trade._id }, { bot: true });
             Logger.separator();
             continue;
         }
 
-        // Fetch positions (needed for size calculation)
         const my_positions: UserPositionInterface[] = await fetchData(
-            `https://data-api.polymarket.com/positions?user=${ENV.PROXY_WALLET}`
+            `https://data-api.polymarket.com/positions?user=${tenant.proxyWallet}`
         );
         const user_positions: UserPositionInterface[] = await fetchData(
             `https://data-api.polymarket.com/positions?user=${trade.userAddress}`
@@ -197,36 +210,26 @@ const doMirrorTrading = async (clobClient: ClobClient, trades: TradeWithUser[]) 
             (position: UserPositionInterface) => position.conditionId === trade.conditionId
         );
 
-        const my_balance = await getMyBalance(ENV.PROXY_WALLET);
-        const user_balance = user_positions.reduce((total, pos) => {
-            return total + (pos.currentValue || 0);
-        }, 0);
+        const my_balance = await getMyBalance(tenant.proxyWallet);
+        const user_balance = user_positions.reduce((total, pos) => total + (pos.currentValue || 0), 0);
+        const recentPnl = user_positions.length > 0 ? user_positions.reduce((sum, p) => sum + (p.percentPnl || 0), 0) / user_positions.length : 0;
 
-        // Calculate recent PnL ratio for ADAPTIVE sizing
-        const recentPnl = user_positions.length > 0
-            ? user_positions.reduce((sum, p) => sum + (p.percentPnl || 0), 0) / user_positions.length
-            : 0;
+        const mirrorConfig = {
+            copyMode: CopyMode.MIRROR,
+            mirrorSizeMode: tenant.settings.mirrorSizeMode as any,
+            copySize: tenant.settings.copySize,
+            fixedAmount: tenant.settings.fixedAmount
+        };
 
-        // Transform: only the size is adjusted. Everything else mirrors the original.
-        const mirroredSize = calculateMirrorSize(
-            ENV.MIRROR_CONFIG,
-            trade.usdcSize,
-            my_balance,
-            user_balance,
-            recentPnl
-        );
+        const mirroredSize = calculateMirrorSize(mirrorConfig, trade.usdcSize, my_balance, user_balance, recentPnl);
 
         const mirroredTrade: UserActivityInterface = {
             ...trade,
             usdcSize: mirroredSize,
-            // price and all other fields remain identical (exact replication intent)
         };
 
-        Logger.info(
-            `[TRADE EXECUTED] MIRROR | ${orderType} | side=${trade.side} size=$${mirroredSize.toFixed(2)} price=${trade.price}`
-        );
+        Logger.info(`[TRADE EXECUTED] MIRROR | ${orderType} | side=${trade.side} size=$${mirroredSize.toFixed(2)} price=${trade.price}`);
 
-        // Execute immediately — no aggregation, no batching
         await postOrder(
             clobClient,
             trade.side === 'BUY' ? 'buy' : 'sell',
@@ -237,23 +240,20 @@ const doMirrorTrading = async (clobClient: ClobClient, trades: TradeWithUser[]) 
             trade.userAddress
         );
 
+        telegram.tradeExecuted(trade.side || 'BUY', mirroredSize, trade.price || 0, trade.slug || trade.asset);
         Logger.separator();
     }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// NORMAL MODE EXECUTION ENGINE (unchanged from original)
-// ─────────────────────────────────────────────────────────────────────────────
-const doTrading = async (clobClient: ClobClient, trades: TradeWithUser[]) => {
+const doTrading = async (tenant: Tenant, clobClient: ClobClient, trades: TradeWithUser[]) => {
     for (const trade of trades) {
-        if (killSwitchTriggered) {
-            Logger.warning('🛑 Kill switch active — skipping trade');
+        if (killSwitches.get(tenant.userId)) {
+            Logger.warning(`🛑 Kill switch active for ${tenant.name || tenant.userId} — skipping trade`);
             return;
         }
-        if (!(await checkDailyLoss())) return;
+        if (!(await checkDailyLoss(tenant))) return;
 
-        const UserActivity = getUserActivityModel(trade.userAddress);
-        await UserActivity.updateOne({ _id: trade._id }, { $set: { botExcutedTime: 1 } });
+        await markTradeExecuted(tenant.userId, trade);
 
         Logger.trade(trade.userAddress, trade.side || 'UNKNOWN', {
             asset: trade.asset,
@@ -267,13 +267,12 @@ const doTrading = async (clobClient: ClobClient, trades: TradeWithUser[]) => {
 
         if (PREVIEW_MODE) {
             Logger.info('🔍 PREVIEW MODE — trade logged but NOT executed');
-            await UserActivity.updateOne({ _id: trade._id }, { bot: true });
             Logger.separator();
             continue;
         }
 
         const my_positions: UserPositionInterface[] = await fetchData(
-            `https://data-api.polymarket.com/positions?user=${ENV.PROXY_WALLET}`
+            `https://data-api.polymarket.com/positions?user=${tenant.proxyWallet}`
         );
         const user_positions: UserPositionInterface[] = await fetchData(
             `https://data-api.polymarket.com/positions?user=${trade.userAddress}`
@@ -285,11 +284,8 @@ const doTrading = async (clobClient: ClobClient, trades: TradeWithUser[]) => {
             (position: UserPositionInterface) => position.conditionId === trade.conditionId
         );
 
-        const my_balance = await getMyBalance(ENV.PROXY_WALLET);
-
-        const user_balance = user_positions.reduce((total, pos) => {
-            return total + (pos.currentValue || 0);
-        }, 0);
+        const my_balance = await getMyBalance(tenant.proxyWallet);
+        const user_balance = user_positions.reduce((total, pos) => total + (pos.currentValue || 0), 0);
 
         Logger.balance(my_balance, user_balance, trade.userAddress);
 
@@ -303,28 +299,25 @@ const doTrading = async (clobClient: ClobClient, trades: TradeWithUser[]) => {
             trade.userAddress
         );
 
+        telegram.tradeExecuted(trade.side || 'BUY', trade.usdcSize, trade.price || 0, trade.slug || trade.asset);
         Logger.separator();
     }
 };
 
-/**
- * Execute aggregated trades (NORMAL mode only)
- */
-const doAggregatedTrading = async (clobClient: ClobClient, aggregatedTrades: AggregatedTrade[]) => {
+const doAggregatedTrading = async (tenant: Tenant, clobClient: ClobClient, aggregatedTrades: AggregatedTrade[]) => {
     for (const agg of aggregatedTrades) {
-        Logger.header(`📊 AGGREGATED TRADE (${agg.trades.length} trades combined)`);
+        Logger.header(`📊 AGGREGATED TRADE for ${tenant.name || tenant.userId} (${agg.trades.length} trades combined)`);
         Logger.info(`Market: ${agg.slug || agg.asset}`);
         Logger.info(`Side: ${agg.side}`);
         Logger.info(`Total volume: $${agg.totalUsdcSize.toFixed(2)}`);
         Logger.info(`Average price: $${agg.averagePrice.toFixed(4)}`);
 
         for (const trade of agg.trades) {
-            const UserActivity = getUserActivityModel(trade.userAddress);
-            await UserActivity.updateOne({ _id: trade._id }, { $set: { botExcutedTime: 1 } });
+            await markTradeExecuted(tenant.userId, trade);
         }
 
         const my_positions: UserPositionInterface[] = await fetchData(
-            `https://data-api.polymarket.com/positions?user=${ENV.PROXY_WALLET}`
+            `https://data-api.polymarket.com/positions?user=${tenant.proxyWallet}`
         );
         const user_positions: UserPositionInterface[] = await fetchData(
             `https://data-api.polymarket.com/positions?user=${agg.userAddress}`
@@ -336,11 +329,8 @@ const doAggregatedTrading = async (clobClient: ClobClient, aggregatedTrades: Agg
             (position: UserPositionInterface) => position.conditionId === agg.conditionId
         );
 
-        const my_balance = await getMyBalance(ENV.PROXY_WALLET);
-
-        const user_balance = user_positions.reduce((total, pos) => {
-            return total + (pos.currentValue || 0)
-        }, 0);
+        const my_balance = await getMyBalance(tenant.proxyWallet);
+        const user_balance = user_positions.reduce((total, pos) => total + (pos.currentValue || 0), 0);
 
         Logger.balance(my_balance, user_balance, agg.userAddress);
 
@@ -361,127 +351,89 @@ const doAggregatedTrading = async (clobClient: ClobClient, aggregatedTrades: Agg
             agg.userAddress
         );
 
+        telegram.tradeExecuted(agg.side || 'BUY', agg.totalUsdcSize, agg.averagePrice || 0, agg.slug || agg.asset);
         Logger.separator();
     }
 };
 
-// Track if executor should continue running
 let isRunning = true;
 
-/**
- * Stop the trade executor gracefully
- */
 export const stopTradeExecutor = () => {
     isRunning = false;
-    Logger.info('Trade executor shutdown requested...');
+    Logger.info('Multi-Tenant Trade executor shutdown requested...');
 };
 
-const tradeExecutor = async (clobClient: ClobClient) => {
-    Logger.success(`Trade executor ready for ${ENV.USER_ADDRESSES.length} trader(s)`);
-    if (telegram.isEnabled()) {
-        Logger.info('📱 Telegram notifications enabled');
-    }
-    if (PREVIEW_MODE) {
-        Logger.warning('🔍 PREVIEW MODE ACTIVE — trades will be logged but NOT executed');
-    }
-
-    if (ENV.MIRROR_CONFIG.copyMode === CopyMode.MIRROR) {
-        Logger.info(`🪞 MIRROR MODE ACTIVE | size strategy: ${ENV.MIRROR_CONFIG.mirrorSizeMode}`);
-        Logger.info('   ↳ No filters · No risk checks · No stop-loss · Immediate execution');
-    } else {
-        Logger.info(`🛡️ Daily loss cap: ${DAILY_LOSS_CAP_PCT}% (set DAILY_LOSS_CAP_PCT to adjust)`);
-        if (ENV.TRADE_AGGREGATION_ENABLED) {
-            Logger.info(
-                `Trade aggregation enabled: ${ENV.TRADE_AGGREGATION_WINDOW_SECONDS}s window, $${TRADE_AGGREGATION_MIN_TOTAL_USD} minimum`
-            );
-        }
-    }
-
+const tradeExecutor = async () => {
+    Logger.success(`Multi-Tenant Trade executor ready`);
+    
     let lastCheck = Date.now();
-    while (isRunning) {
-        const trades = await readTempTrades();
 
-        if (ENV.MIRROR_CONFIG.copyMode === CopyMode.MIRROR) {
-            // ── MIRROR PIPELINE: detect → transform(size only) → execute immediately ──
-            if (trades.length > 0) {
+    while (isRunning) {
+        for (const tenant of ACTIVE_TENANTS) {
+            if (!tenant.targetTraders.length) continue;
+
+            const trades = await readTempTradesForTenant(tenant);
+            if (trades.length === 0) continue; // Skip to next tenant if no trades
+
+            const clobClient = await getClobClientForTenant(tenant);
+
+            if (tenant.settings.copyMode === 'MIRROR') {
                 Logger.clearLine();
-                await doMirrorTrading(clobClient, trades);
+                await doMirrorTrading(tenant, clobClient, trades);
                 lastCheck = Date.now();
-            } else {
-                if (Date.now() - lastCheck > 300) {
-                    Logger.waiting(ENV.USER_ADDRESSES.length);
-                    lastCheck = Date.now();
-                }
-            }
-        } else if (ENV.TRADE_AGGREGATION_ENABLED) {
-            // ── NORMAL + AGGREGATION PIPELINE ──────────────────────────────────────
-            if (trades.length > 0) {
+            } else if (ENV.TRADE_AGGREGATION_ENABLED) {
                 Logger.clearLine();
-                Logger.info(
-                    `📥 ${trades.length} new trade${trades.length > 1 ? 's' : ''} detected`
-                );
+                Logger.info(`📥 ${trades.length} new trade(s) detected for ${tenant.name || tenant.userId}`);
 
                 for (const trade of trades) {
                     if (trade.side === 'BUY' && trade.usdcSize < TRADE_AGGREGATION_MIN_TOTAL_USD) {
-                        Logger.info(
-                            `Adding $${trade.usdcSize.toFixed(2)} ${trade.side} trade to aggregation buffer for ${trade.slug || trade.asset}`
-                        );
-                        addToAggregationBuffer(trade);
+                        Logger.info(`Adding $${trade.usdcSize.toFixed(2)} ${trade.side} trade to aggregation buffer for ${trade.slug || trade.asset}`);
+                        addToAggregationBuffer(tenant, trade);
                     } else {
                         Logger.clearLine();
                         Logger.header('⚡ IMMEDIATE TRADE (above threshold)');
-                        await doTrading(clobClient, [trade]);
+                        await doTrading(tenant, clobClient, [trade]);
                     }
                 }
-                lastCheck = Date.now();
-            }
-
-            const readyAggregations = getReadyAggregatedTrades();
-            if (readyAggregations.length > 0) {
-                Logger.clearLine();
-                Logger.header(
-                    `⚡ ${readyAggregations.length} AGGREGATED TRADE${readyAggregations.length > 1 ? 'S' : ''} READY`
-                );
-                await doAggregatedTrading(clobClient, readyAggregations);
-                lastCheck = Date.now();
-            }
-
-            if (trades.length === 0 && readyAggregations.length === 0) {
-                if (Date.now() - lastCheck > 300) {
-                    const bufferedCount = tradeAggregationBuffer.size;
-                    if (bufferedCount > 0) {
-                        Logger.waiting(
-                            ENV.USER_ADDRESSES.length,
-                            `${bufferedCount} trade group(s) pending`
-                        );
-                    } else {
-                        Logger.waiting(ENV.USER_ADDRESSES.length);
-                    }
-                    lastCheck = Date.now();
-                }
-            }
-        } else {
-            // ── NORMAL PIPELINE (no aggregation) ────────────────────────────────────
-            if (trades.length > 0) {
-                Logger.clearLine();
-                Logger.header(
-                    `⚡ ${trades.length} NEW TRADE${trades.length > 1 ? 'S' : ''} TO COPY`
-                );
-                await doTrading(clobClient, trades);
                 lastCheck = Date.now();
             } else {
-                if (Date.now() - lastCheck > 300) {
-                    Logger.waiting(ENV.USER_ADDRESSES.length);
-                    lastCheck = Date.now();
-                }
+                Logger.clearLine();
+                Logger.header(`⚡ ${trades.length} NEW TRADE(S) TO COPY FOR ${tenant.name || tenant.userId}`);
+                await doTrading(tenant, clobClient, trades);
+                lastCheck = Date.now();
             }
+        }
+
+        // Process aggregations for all tenants
+        for (const tenant of ACTIVE_TENANTS) {
+            const readyAggregations = getReadyAggregatedTrades(tenant);
+            if (readyAggregations.length > 0) {
+                const clobClient = await getClobClientForTenant(tenant);
+                Logger.clearLine();
+                Logger.header(`⚡ ${readyAggregations.length} AGGREGATED TRADE(S) READY FOR ${tenant.name || tenant.userId}`);
+                await doAggregatedTrading(tenant, clobClient, readyAggregations);
+                lastCheck = Date.now();
+            }
+        }
+
+        if (Date.now() - lastCheck > 3000) { // Log waiting every 3s instead of hammering
+            let totalWaiting = 0;
+            for (const buffer of tradeAggregationBuffers.values()) {
+                totalWaiting += buffer.size;
+            }
+            if (totalWaiting > 0) {
+                Logger.waiting(ACTIVE_TENANTS.length, `${totalWaiting} trade group(s) pending across all tenants`);
+            } else {
+                Logger.waiting(ACTIVE_TENANTS.length, 'SaaS Engine Active');
+            }
+            lastCheck = Date.now();
         }
 
         if (!isRunning) break;
         await new Promise((resolve) => setTimeout(resolve, 300));
     }
 
-    Logger.info('Trade executor stopped');
+    Logger.info('Multi-Tenant Trade executor stopped');
 };
 
 export default tradeExecutor;

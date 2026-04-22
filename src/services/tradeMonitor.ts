@@ -142,6 +142,7 @@ const fetchTradeDataForTrader = async ({ address, UserActivity, UserPosition }: 
                 profileImageOptimized: activity.profileImageOptimized,
                 bot: false,
                 botExcutedTime: 0,
+                executedBy: [], // Track which userIds have executed this trade
                 orderType,
             }).save();
             Logger.info(
@@ -238,7 +239,9 @@ const tradeMonitor = async () => {
     }
 
     while (isRunning) {
-        await fetchTradeData(userModels);
+        // Dynamically get user models so we pick up any changes from the database sync
+        const currentUserModels = getUserModels();
+        await fetchTradeData(currentUserModels);
         if (!isRunning) break;
         await new Promise((resolve) => setTimeout(resolve, ENV.FETCH_INTERVAL * 1000));
     }
