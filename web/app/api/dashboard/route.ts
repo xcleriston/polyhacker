@@ -27,8 +27,11 @@ export async function GET(req: NextRequest) {
 
   // Fetch balance if proxyWallet or privateKey exists
   let walletBalance = 0;
+  let walletAddressUsed = '';
   if (settings?.proxyWallet || settings?.privateKey) {
-    walletBalance = await getWalletBalance(settings?.proxyWallet || undefined, settings?.privateKey || undefined);
+    const result = await getWalletBalance(settings?.proxyWallet || undefined, settings?.privateKey || undefined);
+    walletBalance = result.balance;
+    walletAddressUsed = result.addressUsed;
   }
 
   // Self-heal: Make the first/only user an Admin and Active automatically
@@ -53,6 +56,7 @@ export async function GET(req: NextRequest) {
     activeTraders: traderCount,
     recentTrades,
     walletBalance,
+    walletAddressUsed,
     botStatus: isConfigured ? 'running' : 'stopped',
     userRole: role,
     userActive: isPrimaryAdmin ? true : active // Emergency bypass for primary admin

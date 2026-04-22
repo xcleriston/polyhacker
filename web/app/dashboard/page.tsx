@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { Users, Activity, TrendingUp, Zap, Play, Square, FlaskConical, Loader2, XCircle } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { RecentTradesTable } from '@/components/dashboard/RecentTradesTable';
 import { TradersManager } from '@/components/dashboard/TradersManager';
 import { useAuth } from '@/components/providers/AuthProvider';
@@ -25,6 +25,7 @@ interface DashboardData {
   botStatus: 'running' | 'stopped';
   userActive?: boolean;
   walletBalance: number;
+  walletAddressUsed?: string;
 }
 
 interface Trader {
@@ -121,6 +122,7 @@ export default function DashboardPage() {
     {
       title: 'Wallet Balance',
       value: data?.walletBalance !== undefined ? `$${data.walletBalance.toFixed(2)}` : '$0.00',
+      description: data?.walletAddressUsed ? `${data.walletAddressUsed.slice(0, 6)}...${data.walletAddressUsed.slice(-4)}` : 'No wallet',
       icon: TrendingUp,
       color: 'text-emerald-400',
       bg: 'bg-emerald-500/10',
@@ -228,7 +230,7 @@ export default function DashboardPage() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {statCards.map(({ title, value, icon: Icon, color, bg }) => (
+        {statCards.map(({ title, value, description, icon: Icon, color, bg }) => (
           <Card key={title} className="border-white/[0.06] bg-slate-900/40 hover:bg-slate-900/60 transition-colors overflow-hidden group">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -239,6 +241,11 @@ export default function DashboardPage() {
                       <span className="inline-block w-12 h-8 bg-slate-800/50 animate-pulse rounded-md" />
                     ) : value}
                   </p>
+                  {description && !loading && (
+                    <CardDescription className="text-[10px] opacity-70 font-mono mt-1">
+                      {description}
+                    </CardDescription>
+                  )}
                 </div>
                 <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner transition-transform group-hover:rotate-12', bg)}>
                   <Icon size={22} className={color} />

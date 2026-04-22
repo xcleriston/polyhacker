@@ -40,3 +40,11 @@ export function CardContent({ className, children, ...props }: CardProps) {
     </div>
   );
 }
+
+export function CardDescription({ className, children, ...props }: CardProps) {
+  return (
+    <p className={cn('text-sm text-slate-400 mt-1', className)} {...props}>
+      {children}
+    </p>
+  );
+}
