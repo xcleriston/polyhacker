@@ -17,7 +17,8 @@ const validateRequiredEnv = (): void => {
     const required = ['DATABASE_URL'];
     const missing = required.filter((key) => !process.env[key]);
     if (missing.length > 0) {
-        throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+        console.warn(`\n⚠️ Missing required environment variables: ${missing.join(', ')}`);
+        console.warn('⚠️ The bot may not function correctly until these are set.\n');
     }
 };
 
@@ -26,20 +27,14 @@ const validateRequiredEnv = (): void => {
  */
 const validateAddresses = (): void => {
     if (process.env.PROXY_WALLET && !isValidEthereumAddress(process.env.PROXY_WALLET)) {
-        throw new Error(`Invalid PROXY_WALLET: ${process.env.PROXY_WALLET}. Must be a valid Ethereum address.`);
+        console.warn(`\n⚠️ Invalid PROXY_WALLET: ${process.env.PROXY_WALLET}. Expected a valid Ethereum address.\n`);
     }
 
     if (
         process.env.USDC_CONTRACT_ADDRESS &&
         !isValidEthereumAddress(process.env.USDC_CONTRACT_ADDRESS)
     ) {
-        console.error('\n❌ Invalid USDC Contract Address\n');
-        console.error(`Current value: ${process.env.USDC_CONTRACT_ADDRESS}`);
-        console.error('Default value: 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174\n');
-        console.error('⚠️  Unless you know what you\'re doing, use the default value!\n');
-        throw new Error(
-            `Invalid USDC_CONTRACT_ADDRESS format: ${process.env.USDC_CONTRACT_ADDRESS}`
-        );
+        console.warn(`\n⚠️ Invalid USDC_CONTRACT_ADDRESS: ${process.env.USDC_CONTRACT_ADDRESS}. Expected a valid Ethereum address.\n`);
     }
 };
 
@@ -129,44 +124,46 @@ validateUrls();
 // Parse USER_ADDRESSES: supports both comma-separated string and JSON array
 const parseUserAddresses = (input: string | undefined): string[] => {
     if (!input) return [];
-    const trimmed = input.trim();
+    
+    // Strip surrounding quotes if present
+    let rawInput = input.trim();
+    if ((rawInput.startsWith('"') && rawInput.endsWith('"')) || (rawInput.startsWith("'") && rawInput.endsWith("'"))) {
+        rawInput = rawInput.slice(1, -1).trim();
+    }
+
     // Check if it's JSON array format
-    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+    if (rawInput.startsWith('[') && rawInput.endsWith(']')) {
         try {
-            const parsed = JSON.parse(trimmed);
+            const parsed = JSON.parse(rawInput);
             if (Array.isArray(parsed)) {
-                const addresses = parsed
+                return parsed
                     .map((addr) => addr.toLowerCase().trim())
-                    .filter((addr) => addr.length > 0);
-                // Validate each address
-                for (const addr of addresses) {
-                    if (!isValidEthereumAddress(addr)) {
-                        throw new Error(`Invalid Ethereum address in USER_ADDRESSES: "${addr}". (Expected 0x + 40 hex characters)`);
-                    }
-                }
-                return addresses;
+                    .filter((addr) => {
+                        if (!isValidEthereumAddress(addr)) {
+                            console.warn(`⚠️ Skipping invalid Ethereum address in USER_ADDRESSES: "${addr}"`);
+                            return false;
+                        }
+                        return true;
+                    });
             }
         } catch (e) {
-            if (e instanceof Error && e.message.includes('Invalid Ethereum address')) {
-                throw e;
-            }
-            throw new Error(
-                `Invalid JSON format for USER_ADDRESSES: ${e instanceof Error ? e.message : String(e)}`
-            );
+            console.error(`❌ Error parsing JSON for USER_ADDRESSES: ${e instanceof Error ? e.message : String(e)}`);
+            // Fallback to comma-separated if JSON parse fails
         }
     }
+    
     // Otherwise treat as comma-separated
-    const addresses = trimmed
+    return rawInput
         .split(',')
         .map((addr) => addr.toLowerCase().trim())
-        .filter((addr) => addr.length > 0);
-    // Validate each address
-    for (const addr of addresses) {
-        if (!isValidEthereumAddress(addr)) {
-            throw new Error(`Invalid Ethereum address in USER_ADDRESSES: "${addr}". (Expected 0x + 40 hex characters)`);
-        }
-    }
-    return addresses;
+        .filter((addr) => addr.length > 0)
+        .filter((addr) => {
+            if (!isValidEthereumAddress(addr)) {
+                console.warn(`⚠️ Skipping invalid Ethereum address in USER_ADDRESSES: "${addr}"`);
+                return false;
+            }
+            return true;
+        });
 };
 
 // Parse copy strategy configuration
