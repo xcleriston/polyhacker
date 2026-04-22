@@ -16,7 +16,7 @@ FROM base AS runner
 ENV NODE_ENV=production
 WORKDIR /app
 
-# Copy everything needed to run
+# Copy full node_modules so prisma CLI is available at runtime
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
@@ -27,5 +27,5 @@ COPY --from=builder /app/next.config.ts ./next.config.ts
 EXPOSE 3000
 ENV PORT=3000
 
-# db push syncs schema then starts Next.js
-CMD ["sh", "-c", "npx prisma db push --accept-data-loss --skip-generate && npx next start"]
+# npm start runs: prisma db push --accept-data-loss --skip-generate && next start
+CMD ["npm", "start"]
