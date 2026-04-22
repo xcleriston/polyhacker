@@ -16,16 +16,28 @@ FROM base AS runner
 ENV NODE_ENV=production
 WORKDIR /app
 
-# Copy full node_modules so prisma CLI is available at runtime
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/.next ./.next
+# Set correct permissions for nextjs user
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+# Copy standalone build
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/next.config.ts ./next.config.ts
+
+# Also need to copy node_modules for prisma if using serverExternalPackages
+# However, standalone usually bundles most things. 
+# But for Prisma, we need the engines.
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+
+USER nextjs
 
 EXPOSE 3000
 ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
 
-# npm start runs: prisma db push --accept-data-loss --skip-generate && next start
-CMD ["npm", "start"]
+# Note: We can't run prisma db push here easily without full node_modules
+# It's better to run it in a pre-deploy hook or during build.
+# For now, we'll assume the DB is ready or run it via a script if needed.
+CMD ["node", "server.js"]

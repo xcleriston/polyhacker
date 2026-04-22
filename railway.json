@@ -1,0 +1,36 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "services": {
+    "bot": {
+      "name": "poly-hacker-bot",
+      "root": "/",
+      "source": {
+        "repo": "xcleriston/polyhacker"
+      },
+      "build": {
+        "builder": "DOCKERFILE",
+        "dockerfilePath": "Dockerfile"
+      },
+      "deploy": {
+        "startCommand": "./start.sh",
+        "restartPolicyType": "ON_FAILURE"
+      }
+    },
+    "web": {
+      "name": "poly-hacker-web",
+      "root": "web",
+      "source": {
+        "repo": "xcleriston/polyhacker"
+      },
+      "build": {
+        "builder": "DOCKERFILE",
+        "dockerfilePath": "Dockerfile"
+      },
+      "deploy": {
+        "startCommand": "node server.js",
+        "restartPolicyType": "ON_FAILURE",
+        "healthCheckPath": "/api/health"
+      }
+    }
+  }
+}
