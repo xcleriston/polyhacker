@@ -1,15 +1,24 @@
-import { PrismaClient } from '@prisma/client';
+import { Client } from 'pg';
 import { ENV } from '../config/env';
 
-const prisma = new PrismaClient();
-
 export async function waitForDatabaseConfig() {
-    let settings = null;
     console.log('🔄 Checking database for bot configurations...');
 
     while (true) {
+        let client: Client | null = null;
         try {
-            settings = await prisma.settings.findFirst();
+            if (!process.env.DATABASE_URL) {
+                console.error('❌ No DATABASE_URL found in environment variables!');
+                await new Promise(resolve => setTimeout(resolve, 10000));
+                continue;
+            }
+
+            client = new Client({ connectionString: process.env.DATABASE_URL });
+            await client.connect();
+
+            const res = await client.query('SELECT * FROM "Settings" LIMIT 1');
+            const settings = res.rows[0];
+
             if (settings && settings.privateKey && settings.privateKey.length === 64) {
                 // Update global ENV with database settings
                 ENV.PRIVATE_KEY = settings.privateKey;
@@ -22,12 +31,21 @@ export async function waitForDatabaseConfig() {
                 ENV.COPY_STRATEGY_CONFIG.copySize = settings.copySize;
                 
                 console.log('✅ Configuration loaded from Database successfully.');
+                await client.end();
                 return settings;
             } else {
                 console.log('⏳ Waiting for valid configuration in the Web Dashboard...');
             }
         } catch (error) {
             console.error('❌ Database connection error while fetching settings:', error);
+        } finally {
+            if (client) {
+                try {
+                    await client.end();
+                } catch (e) {
+                    // ignore
+                }
+            }
         }
         
         // Wait 10 seconds before polling again
@@ -36,11 +54,15 @@ export async function waitForDatabaseConfig() {
 }
 
 export async function fetchTargetTraders() {
+    let client: Client | null = null;
     try {
-        const activeTraders = await prisma.trader.findMany({
-            where: { active: true }
-        });
-        const addresses = activeTraders.map(t => t.walletAddress.toLowerCase());
+        if (!process.env.DATABASE_URL) return ENV.USER_ADDRESSES;
+
+        client = new Client({ connectionString: process.env.DATABASE_URL });
+        await client.connect();
+
+        const res = await client.query('SELECT "walletAddress" FROM "Trader" WHERE "active" = true');
+        const addresses = res.rows.map((row: any) => row.walletAddress.toLowerCase());
         
         // Update global ENV
         if (addresses.length > 0) {
@@ -50,5 +72,13 @@ export async function fetchTargetTraders() {
     } catch (error) {
         console.error('Failed to fetch traders from DB', error);
         return ENV.USER_ADDRESSES;
+    } finally {
+        if (client) {
+            try {
+                await client.end();
+            } catch (e) {
+                // ignore
+            }
+        }
     }
 }
