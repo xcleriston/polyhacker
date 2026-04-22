@@ -14,27 +14,7 @@ const isValidEthereumAddress = (address: string): boolean => {
  * Validate required environment variables
  */
 const validateRequiredEnv = (): void => {
-    const required = [
-        'CLOB_HTTP_URL',
-        'CLOB_WS_URL',
-        'RPC_URL',
-        'USDC_CONTRACT_ADDRESS',
-    ];
-
-    const missing: string[] = [];
-    for (const key of required) {
-        if (!process.env[key]) {
-            missing.push(key);
-        }
-    }
-
-    if (missing.length > 0) {
-        console.error('\n❌ Configuration Error: Missing required system environment variables\n');
-        console.error(`Missing variables: ${missing.join(', ')}\n`);
-        throw new Error(
-            `Missing required environment variables: ${missing.join(', ')}`
-        );
-    }
+    // We now use default fallbacks for system variables so they aren't strictly required.
 };
 
 /**
@@ -279,8 +259,8 @@ export const ENV = {
     USER_ADDRESSES: parseUserAddresses(process.env.USER_ADDRESSES as string),
     PROXY_WALLET: process.env.PROXY_WALLET as string,
     PRIVATE_KEY: process.env.PRIVATE_KEY as string,
-    CLOB_HTTP_URL: process.env.CLOB_HTTP_URL as string,
-    CLOB_WS_URL: process.env.CLOB_WS_URL as string,
+    CLOB_HTTP_URL: process.env.CLOB_HTTP_URL || 'https://clob.polymarket.com/',
+    CLOB_WS_URL: process.env.CLOB_WS_URL || 'wss://ws-subscriptions-clob.polymarket.com/ws',
     FETCH_INTERVAL: parseInt(process.env.FETCH_INTERVAL || '1', 10),
     TOO_OLD_TIMESTAMP: parseInt(process.env.TOO_OLD_TIMESTAMP || '24', 10),
     RETRY_LIMIT: parseInt(process.env.RETRY_LIMIT || '3', 10),
@@ -298,8 +278,8 @@ export const ENV = {
         process.env.TRADE_AGGREGATION_WINDOW_SECONDS || '300',
         10
     ), // 5 minutes default
-    RPC_URL: process.env.RPC_URL as string,
-    USDC_CONTRACT_ADDRESS: process.env.USDC_CONTRACT_ADDRESS as string,
+    RPC_URL: process.env.RPC_URL || 'https://polygon-rpc.com/',
+    USDC_CONTRACT_ADDRESS: process.env.USDC_CONTRACT_ADDRESS || '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174',
     // Mirror mode configuration
     MIRROR_CONFIG: parseMirrorConfig(),
 };
