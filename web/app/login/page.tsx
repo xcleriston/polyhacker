@@ -13,16 +13,9 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const { setAuth, token, loading } = useAuth();
+  const { setAuth } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
-
-  // If already logged in, redirect to dashboard
-  useEffect(() => {
-    if (!loading && token) {
-      router.push('/dashboard');
-    }
-  }, [token, loading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
