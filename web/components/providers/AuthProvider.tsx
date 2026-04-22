@@ -40,8 +40,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setAuth = (t: string, u: AuthUser) => {
-    Cookies.set('ph_token', t, { expires: 7 }); // 7 days
-    Cookies.set('ph_user', JSON.stringify(u), { expires: 7 });
+    Cookies.set('ph_token', t, { expires: 7, path: '/' });
+    Cookies.set('ph_user', JSON.stringify(u), { expires: 7, path: '/' });
     setToken(t);
     setUser(u);
   };

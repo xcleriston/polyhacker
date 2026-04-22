@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Users, Activity, TrendingUp, Zap, Play, Square, FlaskConical, Loader2 } from 'lucide-react';
+import { Users, Activity, TrendingUp, Zap, Play, Square, FlaskConical, Loader2, XCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { RecentTradesTable } from '@/components/dashboard/RecentTradesTable';
 import { TradersManager } from '@/components/dashboard/TradersManager';
