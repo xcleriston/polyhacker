@@ -104,6 +104,10 @@ export const main = async () => {
         const clobClient = await createClobClient();
         Logger.success('CLOB client ready');
 
+        // Send Telegram startup notification if enabled
+        const myBalance = await import('./utils/getMyBalance').then(m => m.default(ENV.PROXY_WALLET)).catch(() => 0);
+        await import('./utils/telegram').then(m => m.default.startup(ENV.USER_ADDRESSES.length, myBalance));
+
         Logger.separator();
         Logger.info('Starting trade monitor...');
         tradeMonitor();
