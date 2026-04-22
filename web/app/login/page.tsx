@@ -12,14 +12,21 @@ import { useToast } from '@/components/ui/Toast';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const { setAuth } = useAuth();
+  const [submitting, setSubmitting] = useState(false);
+  const { setAuth, token, loading } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
+  // If already logged in, redirect to dashboard
+  useEffect(() => {
+    if (!loading && token) {
+      router.push('/dashboard');
+    }
+  }, [token, loading, router]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setSubmitting(true);
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
@@ -34,7 +41,7 @@ export default function LoginPage() {
     } catch (err: unknown) {
       toast((err as Error).message || 'Login failed', 'error');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -75,7 +82,7 @@ export default function LoginPage() {
               required
               autoComplete="current-password"
             />
-            <Button type="submit" loading={loading} className="w-full" size="lg">
+            <Button type="submit" loading={submitting} className="w-full" size="lg">
               Sign in
             </Button>
           </form>

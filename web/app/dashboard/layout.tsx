@@ -16,7 +16,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [token, loading, router]);
 
-  if (loading || !token) return null;
+  if (loading) {
+    return (
+      <div className="h-screen w-screen bg-slate-950 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-violet-500"></div>
+      </div>
+    );
+  }
+
+  if (!token) return null;
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-950">
