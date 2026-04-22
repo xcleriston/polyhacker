@@ -54,24 +54,35 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const testMode = typeof body.testMode === 'boolean' ? body.testMode : true;
-    let proxyWallet = body.proxyWallet || '';
-    const privateKey = body.privateKey || '';
+    
+    // Clean and validate private key
+    let privateKey = (body.privateKey || '').trim();
+    if (privateKey.startsWith('0x')) {
+      privateKey = privateKey.slice(2);
+    }
+    
+    let proxyWallet = (body.proxyWallet || '').trim();
 
-    // Auto-detect proxyWallet if privateKey is provided and proxyWallet is empty
-    if (privateKey && privateKey.length === 64 && (!proxyWallet || proxyWallet === '')) {
+    // Force auto-detect proxyWallet from privateKey if valid key is provided
+    if (privateKey && (privateKey.length === 64 || privateKey.length === 66)) {
+      // Re-handle 0x just in case it was 66 chars
+      const finalKey = privateKey.length === 66 && privateKey.startsWith('0x') ? privateKey.slice(2) : privateKey;
+      
       try {
-        const wallet = new ethers.Wallet(privateKey);
+        const wallet = new ethers.Wallet(finalKey);
         const signerAddress = wallet.address;
+        
+        console.log(`[SETTINGS_FORCED_DETECT] Querying Polymarket for signer: ${signerAddress}`);
         const response = await fetch(`https://clob.polymarket.com/proxy-address?signer=${signerAddress}`);
         if (response.ok) {
           const data = await response.json();
           if (data.proxy) {
             proxyWallet = data.proxy;
-            console.log(`[SETTINGS_AUTO_DETECT] Found proxy ${proxyWallet} for signer ${signerAddress}`);
+            console.log(`[SETTINGS_FORCED_DETECT] Found and forced proxy: ${proxyWallet}`);
           }
         }
       } catch (e) {
-        console.error('[SETTINGS_AUTO_DETECT_ERROR]', e);
+        console.error('[SETTINGS_FORCED_DETECT_ERROR]', e);
       }
     }
 
