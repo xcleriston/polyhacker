@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken } from '@/lib/jwt';
+import { ethers } from 'ethers';
 
 async function getUserId(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
@@ -53,6 +54,26 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const testMode = typeof body.testMode === 'boolean' ? body.testMode : true;
+    let proxyWallet = body.proxyWallet || '';
+    const privateKey = body.privateKey || '';
+
+    // Auto-detect proxyWallet if privateKey is provided and proxyWallet is empty
+    if (privateKey && privateKey.length === 64 && (!proxyWallet || proxyWallet === '')) {
+      try {
+        const wallet = new ethers.Wallet(privateKey);
+        const signerAddress = wallet.address;
+        const response = await fetch(`https://clob.polymarket.com/proxy-address?signer=${signerAddress}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.proxy) {
+            proxyWallet = data.proxy;
+            console.log(`[SETTINGS_AUTO_DETECT] Found proxy ${proxyWallet} for signer ${signerAddress}`);
+          }
+        }
+      } catch (e) {
+        console.error('[SETTINGS_AUTO_DETECT_ERROR]', e);
+      }
+    }
 
     const updated = await prisma.settings.upsert({
       where: { userId },
@@ -61,11 +82,12 @@ export async function POST(req: NextRequest) {
         mirrorSizeMode: body.mirrorSizeMode,
         fixedAmount: parseFloat(body.fixedAmount) || 10.0,
         copySize: parseFloat(body.copySize) || 10.0,
-        proxyWallet: body.proxyWallet || '',
-        privateKey: body.privateKey || '',
+        proxyWallet: proxyWallet,
+        privateKey: privateKey,
         dailyLossCapPct: parseFloat(body.dailyLossCapPct) || 20.0,
         telegramChatId: body.telegramChatId || '',
         testMode,
+        botEnabled: typeof body.botEnabled === 'boolean' ? body.botEnabled : undefined,
       },
       create: {
         userId,
@@ -73,11 +95,12 @@ export async function POST(req: NextRequest) {
         mirrorSizeMode: body.mirrorSizeMode || 'PERCENTAGE',
         fixedAmount: parseFloat(body.fixedAmount) || 10.0,
         copySize: parseFloat(body.copySize) || 10.0,
-        proxyWallet: body.proxyWallet || '',
-        privateKey: body.privateKey || '',
+        proxyWallet: proxyWallet,
+        privateKey: privateKey,
         dailyLossCapPct: parseFloat(body.dailyLossCapPct) || 20.0,
         telegramChatId: body.telegramChatId || '',
         testMode,
+        botEnabled: body.botEnabled || false,
       },
     });
 
