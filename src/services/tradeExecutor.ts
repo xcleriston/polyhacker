@@ -9,15 +9,8 @@ import Logger from '../utils/logger';
 import telegram from '../utils/telegram';
 import { CopyMode, calculateMirrorSize } from '../config/mirrorMode';
 
-const USER_ADDRESSES = ENV.USER_ADDRESSES;
-const RETRY_LIMIT = ENV.RETRY_LIMIT;
-const PROXY_WALLET = ENV.PROXY_WALLET;
-const TRADE_AGGREGATION_ENABLED = ENV.TRADE_AGGREGATION_ENABLED;
-const TRADE_AGGREGATION_WINDOW_SECONDS = ENV.TRADE_AGGREGATION_WINDOW_SECONDS;
 const TRADE_AGGREGATION_MIN_TOTAL_USD = 1.0; // Polymarket minimum
 const PREVIEW_MODE = process.env.PREVIEW_MODE === 'true';
-const MIRROR_CONFIG = ENV.MIRROR_CONFIG;
-const IS_MIRROR_MODE = MIRROR_CONFIG.copyMode === CopyMode.MIRROR;
 
 // Daily loss tracking — disabled in MIRROR mode
 let dailyStartBalance: number | null = null;
@@ -27,10 +20,10 @@ const DAILY_LOSS_CAP_PCT = parseFloat(process.env.DAILY_LOSS_CAP_PCT || '20');
 
 const checkDailyLoss = async (): Promise<boolean> => {
     // MIRROR mode: skip kill-switch / daily-loss check entirely
-    if (IS_MIRROR_MODE) return true;
+    if (ENV.MIRROR_CONFIG.copyMode === CopyMode.MIRROR) return true;
 
     const today = new Date().toISOString().split('T')[0];
-    const currentBalance = await getMyBalance(PROXY_WALLET);
+    const currentBalance = await getMyBalance(ENV.PROXY_WALLET);
 
     if (dailyStartDate !== today) {
         dailyStartDate = today;
@@ -50,8 +43,8 @@ const checkDailyLoss = async (): Promise<boolean> => {
     return true;
 };
 
-// Create activity models for each user
-const userActivityModels = USER_ADDRESSES.map((address) => ({
+// Create activity models for each user dynamically
+const getUserActivityModels = () => ENV.USER_ADDRESSES.map((address) => ({
     address,
     model: getUserActivityModel(address),
 }));
@@ -79,6 +72,7 @@ const tradeAggregationBuffer: Map<string, AggregatedTrade> = new Map();
 
 const readTempTrades = async (): Promise<TradeWithUser[]> => {
     const allTrades: TradeWithUser[] = [];
+    const userActivityModels = getUserActivityModels();
 
     for (const { address, model } of userActivityModels) {
         const trades = await model
@@ -142,7 +136,7 @@ const addToAggregationBuffer = (trade: TradeWithUser): void => {
 const getReadyAggregatedTrades = (): AggregatedTrade[] => {
     const ready: AggregatedTrade[] = [];
     const now = Date.now();
-    const windowMs = TRADE_AGGREGATION_WINDOW_SECONDS * 1000;
+    const windowMs = ENV.TRADE_AGGREGATION_WINDOW_SECONDS * 1000;
 
     for (const [key, agg] of tradeAggregationBuffer.entries()) {
         const timeElapsed = now - agg.firstTradeTime;
@@ -191,7 +185,7 @@ const doMirrorTrading = async (clobClient: ClobClient, trades: TradeWithUser[]) 
 
         // Fetch positions (needed for size calculation)
         const my_positions: UserPositionInterface[] = await fetchData(
-            `https://data-api.polymarket.com/positions?user=${PROXY_WALLET}`
+            `https://data-api.polymarket.com/positions?user=${ENV.PROXY_WALLET}`
         );
         const user_positions: UserPositionInterface[] = await fetchData(
             `https://data-api.polymarket.com/positions?user=${trade.userAddress}`
@@ -203,7 +197,7 @@ const doMirrorTrading = async (clobClient: ClobClient, trades: TradeWithUser[]) 
             (position: UserPositionInterface) => position.conditionId === trade.conditionId
         );
 
-        const my_balance = await getMyBalance(PROXY_WALLET);
+        const my_balance = await getMyBalance(ENV.PROXY_WALLET);
         const user_balance = user_positions.reduce((total, pos) => {
             return total + (pos.currentValue || 0);
         }, 0);
@@ -215,7 +209,7 @@ const doMirrorTrading = async (clobClient: ClobClient, trades: TradeWithUser[]) 
 
         // Transform: only the size is adjusted. Everything else mirrors the original.
         const mirroredSize = calculateMirrorSize(
-            MIRROR_CONFIG,
+            ENV.MIRROR_CONFIG,
             trade.usdcSize,
             my_balance,
             user_balance,
@@ -279,7 +273,7 @@ const doTrading = async (clobClient: ClobClient, trades: TradeWithUser[]) => {
         }
 
         const my_positions: UserPositionInterface[] = await fetchData(
-            `https://data-api.polymarket.com/positions?user=${PROXY_WALLET}`
+            `https://data-api.polymarket.com/positions?user=${ENV.PROXY_WALLET}`
         );
         const user_positions: UserPositionInterface[] = await fetchData(
             `https://data-api.polymarket.com/positions?user=${trade.userAddress}`
@@ -291,7 +285,7 @@ const doTrading = async (clobClient: ClobClient, trades: TradeWithUser[]) => {
             (position: UserPositionInterface) => position.conditionId === trade.conditionId
         );
 
-        const my_balance = await getMyBalance(PROXY_WALLET);
+        const my_balance = await getMyBalance(ENV.PROXY_WALLET);
 
         const user_balance = user_positions.reduce((total, pos) => {
             return total + (pos.currentValue || 0);
@@ -330,7 +324,7 @@ const doAggregatedTrading = async (clobClient: ClobClient, aggregatedTrades: Agg
         }
 
         const my_positions: UserPositionInterface[] = await fetchData(
-            `https://data-api.polymarket.com/positions?user=${PROXY_WALLET}`
+            `https://data-api.polymarket.com/positions?user=${ENV.PROXY_WALLET}`
         );
         const user_positions: UserPositionInterface[] = await fetchData(
             `https://data-api.polymarket.com/positions?user=${agg.userAddress}`
@@ -342,7 +336,7 @@ const doAggregatedTrading = async (clobClient: ClobClient, aggregatedTrades: Agg
             (position: UserPositionInterface) => position.conditionId === agg.conditionId
         );
 
-        const my_balance = await getMyBalance(PROXY_WALLET);
+        const my_balance = await getMyBalance(ENV.PROXY_WALLET);
 
         const user_balance = user_positions.reduce((total, pos) => {
             return total + (pos.currentValue || 0)
@@ -383,7 +377,7 @@ export const stopTradeExecutor = () => {
 };
 
 const tradeExecutor = async (clobClient: ClobClient) => {
-    Logger.success(`Trade executor ready for ${USER_ADDRESSES.length} trader(s)`);
+    Logger.success(`Trade executor ready for ${ENV.USER_ADDRESSES.length} trader(s)`);
     if (telegram.isEnabled()) {
         Logger.info('📱 Telegram notifications enabled');
     }
@@ -391,14 +385,14 @@ const tradeExecutor = async (clobClient: ClobClient) => {
         Logger.warning('🔍 PREVIEW MODE ACTIVE — trades will be logged but NOT executed');
     }
 
-    if (IS_MIRROR_MODE) {
-        Logger.info(`🪞 MIRROR MODE ACTIVE | size strategy: ${MIRROR_CONFIG.mirrorSizeMode}`);
+    if (ENV.MIRROR_CONFIG.copyMode === CopyMode.MIRROR) {
+        Logger.info(`🪞 MIRROR MODE ACTIVE | size strategy: ${ENV.MIRROR_CONFIG.mirrorSizeMode}`);
         Logger.info('   ↳ No filters · No risk checks · No stop-loss · Immediate execution');
     } else {
         Logger.info(`🛡️ Daily loss cap: ${DAILY_LOSS_CAP_PCT}% (set DAILY_LOSS_CAP_PCT to adjust)`);
-        if (TRADE_AGGREGATION_ENABLED) {
+        if (ENV.TRADE_AGGREGATION_ENABLED) {
             Logger.info(
-                `Trade aggregation enabled: ${TRADE_AGGREGATION_WINDOW_SECONDS}s window, $${TRADE_AGGREGATION_MIN_TOTAL_USD} minimum`
+                `Trade aggregation enabled: ${ENV.TRADE_AGGREGATION_WINDOW_SECONDS}s window, $${TRADE_AGGREGATION_MIN_TOTAL_USD} minimum`
             );
         }
     }
@@ -407,7 +401,7 @@ const tradeExecutor = async (clobClient: ClobClient) => {
     while (isRunning) {
         const trades = await readTempTrades();
 
-        if (IS_MIRROR_MODE) {
+        if (ENV.MIRROR_CONFIG.copyMode === CopyMode.MIRROR) {
             // ── MIRROR PIPELINE: detect → transform(size only) → execute immediately ──
             if (trades.length > 0) {
                 Logger.clearLine();
@@ -415,11 +409,11 @@ const tradeExecutor = async (clobClient: ClobClient) => {
                 lastCheck = Date.now();
             } else {
                 if (Date.now() - lastCheck > 300) {
-                    Logger.waiting(USER_ADDRESSES.length);
+                    Logger.waiting(ENV.USER_ADDRESSES.length);
                     lastCheck = Date.now();
                 }
             }
-        } else if (TRADE_AGGREGATION_ENABLED) {
+        } else if (ENV.TRADE_AGGREGATION_ENABLED) {
             // ── NORMAL + AGGREGATION PIPELINE ──────────────────────────────────────
             if (trades.length > 0) {
                 Logger.clearLine();
@@ -457,11 +451,11 @@ const tradeExecutor = async (clobClient: ClobClient) => {
                     const bufferedCount = tradeAggregationBuffer.size;
                     if (bufferedCount > 0) {
                         Logger.waiting(
-                            USER_ADDRESSES.length,
+                            ENV.USER_ADDRESSES.length,
                             `${bufferedCount} trade group(s) pending`
                         );
                     } else {
-                        Logger.waiting(USER_ADDRESSES.length);
+                        Logger.waiting(ENV.USER_ADDRESSES.length);
                     }
                     lastCheck = Date.now();
                 }

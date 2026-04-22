@@ -4,29 +4,24 @@ import fetchData from '../utils/fetchData';
 import Logger from '../utils/logger';
 import { detectOrderType } from '../config/mirrorMode';
 
-const USER_ADDRESSES = ENV.USER_ADDRESSES;
-const TOO_OLD_TIMESTAMP = ENV.TOO_OLD_TIMESTAMP;
-const FETCH_INTERVAL = ENV.FETCH_INTERVAL;
-
-if (!USER_ADDRESSES || USER_ADDRESSES.length === 0) {
-    throw new Error('USER_ADDRESSES is not defined or empty');
-}
-
-// Create activity and position models for each user
-const userModels = USER_ADDRESSES.map((address) => ({
-    address,
-    UserActivity: getUserActivityModel(address),
-    UserPosition: getUserPositionModel(address),
-}));
+// Create activity and position models for each user dynamically
+const getUserModels = () => {
+    return ENV.USER_ADDRESSES.map((address) => ({
+        address,
+        UserActivity: getUserActivityModel(address),
+        UserPosition: getUserPositionModel(address),
+    }));
+};
 
 const init = async () => {
+    const userModels = getUserModels();
     const counts: number[] = [];
     for (const { address, UserActivity } of userModels) {
         const count = await UserActivity.countDocuments();
         counts.push(count);
     }
     Logger.clearLine();
-    Logger.dbConnection(USER_ADDRESSES, counts);
+    Logger.dbConnection(ENV.USER_ADDRESSES, counts);
 
     // Show your own positions first
     try {
@@ -99,10 +94,10 @@ const init = async () => {
         positionDetails.push(topPositions);
     }
     Logger.clearLine();
-    Logger.tradersPositions(USER_ADDRESSES, positionCounts, positionDetails, profitabilities);
+    Logger.tradersPositions(ENV.USER_ADDRESSES, positionCounts, positionDetails, profitabilities);
 };
 
-const fetchTradeDataForTrader = async ({ address, UserActivity, UserPosition }: typeof userModels[number]) => {
+const fetchTradeDataForTrader = async ({ address, UserActivity, UserPosition }: { address: string, UserActivity: any, UserPosition: any }) => {
     try {
         const apiUrl = `https://data-api.polymarket.com/activity?user=${address}&type=TRADE`;
         const activities = await fetchData(apiUrl);
@@ -111,7 +106,7 @@ const fetchTradeDataForTrader = async ({ address, UserActivity, UserPosition }: 
             return;
         }
 
-        const cutoffTimestamp = Date.now() / 1000 - TOO_OLD_TIMESTAMP * 3600;
+        const cutoffTimestamp = Date.now() / 1000 - ENV.TOO_OLD_TIMESTAMP * 3600;
         for (const activity of activities) {
             if (activity.timestamp < cutoffTimestamp) continue;
 
@@ -200,8 +195,7 @@ const fetchTradeDataForTrader = async ({ address, UserActivity, UserPosition }: 
     }
 };
 
-// Parallel fetch for all traders
-const fetchTradeData = async () => {
+const fetchTradeData = async (userModels: any[]) => {
     await Promise.allSettled(userModels.map(fetchTradeDataForTrader));
 };
 
@@ -220,7 +214,8 @@ export const stopTradeMonitor = () => {
 
 const tradeMonitor = async () => {
     await init();
-    Logger.success(`Monitoring ${USER_ADDRESSES.length} trader(s) every ${FETCH_INTERVAL}s`);
+    const userModels = getUserModels();
+    Logger.success(`Monitoring ${ENV.USER_ADDRESSES.length} trader(s) every ${ENV.FETCH_INTERVAL}s`);
     Logger.separator();
 
     // On first run, mark all existing historical trades as already processed
@@ -243,9 +238,9 @@ const tradeMonitor = async () => {
     }
 
     while (isRunning) {
-        await fetchTradeData();
+        await fetchTradeData(userModels);
         if (!isRunning) break;
-        await new Promise((resolve) => setTimeout(resolve, FETCH_INTERVAL * 1000));
+        await new Promise((resolve) => setTimeout(resolve, ENV.FETCH_INTERVAL * 1000));
     }
 
     Logger.info('Trade monitor stopped');
