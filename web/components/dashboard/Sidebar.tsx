@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   Users,
@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/components/providers/AuthProvider';
 
 const navItems = [
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
@@ -23,11 +24,10 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
+  const { token, logout } = useAuth();
   const [userRole, setUserRole] = useState<string>('USER');
 
   useEffect(() => {
-    const token = localStorage.getItem('ph_token');
     if (!token) return;
     fetch('/api/dashboard', { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
@@ -35,11 +35,10 @@ export function Sidebar() {
         if (data.userRole) setUserRole(data.userRole);
       })
       .catch(() => {});
-  }, []);
+  }, [token]);
 
   const handleLogout = () => {
-    localStorage.removeItem('ph_token');
-    router.push('/login');
+    logout();
   };
 
   return (
