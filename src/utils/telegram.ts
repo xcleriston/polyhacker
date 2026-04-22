@@ -1,16 +1,16 @@
 import axios from 'axios';
+import { ENV } from '../config/env';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
-const isEnabled = (): boolean => !!TELEGRAM_BOT_TOKEN && !!TELEGRAM_CHAT_ID;
+const isEnabled = (): boolean => !!TELEGRAM_BOT_TOKEN && !!ENV.TELEGRAM_CHAT_ID;
 
 const send = async (message: string): Promise<void> => {
   if (!isEnabled()) return;
   try {
     await axios.post(
       `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
-      { chat_id: TELEGRAM_CHAT_ID, text: message, parse_mode: 'Markdown' },
+      { chat_id: ENV.TELEGRAM_CHAT_ID, text: message, parse_mode: 'Markdown' },
       { timeout: 5000 }
     );
   } catch {

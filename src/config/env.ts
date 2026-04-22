@@ -283,4 +283,6 @@ export const ENV = {
     USDC_CONTRACT_ADDRESS: process.env.USDC_CONTRACT_ADDRESS || '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174',
     // Mirror mode configuration
     MIRROR_CONFIG: parseMirrorConfig(),
+    // Telegram
+    TELEGRAM_CHAT_ID: process.env.TELEGRAM_CHAT_ID as string,
 };

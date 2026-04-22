@@ -30,6 +30,11 @@ export async function waitForDatabaseConfig() {
                 }
                 ENV.COPY_STRATEGY_CONFIG.copySize = settings.copySize;
                 
+                // Telegram setting
+                if (settings.telegramChatId) {
+                    ENV.TELEGRAM_CHAT_ID = settings.telegramChatId;
+                }
+                
                 console.log('✅ Configuration loaded from Database successfully.');
                 await client.end();
                 return settings;
