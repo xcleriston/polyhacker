@@ -24,6 +24,7 @@ interface DashboardData {
   }>;
   botStatus: 'running' | 'stopped';
   userActive?: boolean;
+  walletBalance: number;
 }
 
 interface Trader {
@@ -118,9 +119,9 @@ export default function DashboardPage() {
       bg: 'bg-violet-500/10',
     },
     {
-      title: 'Recent Trades',
-      value: data?.recentTrades.length ?? '0',
-      icon: Activity,
+      title: 'Wallet Balance',
+      value: data?.walletBalance !== undefined ? `$${data.walletBalance.toFixed(2)}` : '$0.00',
+      icon: TrendingUp,
       color: 'text-emerald-400',
       bg: 'bg-emerald-500/10',
     },
@@ -132,9 +133,9 @@ export default function DashboardPage() {
       bg: isRunning ? (testMode ? 'bg-amber-500/10' : 'bg-emerald-500/10') : 'bg-slate-700/30',
     },
     {
-      title: 'Bot Mode',
-      value: isRunning ? 'MIRROR' : '—',
-      icon: TrendingUp,
+      title: 'Recent Trades',
+      value: data?.recentTrades.length ?? '0',
+      icon: Activity,
       color: 'text-blue-400',
       bg: 'bg-blue-500/10',
     },

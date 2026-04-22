@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
+import { getWalletBalance } from '@/lib/balance';
 
 function getUserFromRequest(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
@@ -24,6 +25,12 @@ export async function GET(req: NextRequest) {
     prisma.user.count()
   ]);
 
+  // Fetch balance if proxyWallet exists
+  let walletBalance = 0;
+  if (settings?.proxyWallet) {
+    walletBalance = await getWalletBalance(settings.proxyWallet);
+  }
+
   // Self-heal: Make the first/only user an Admin and Active automatically
   // Also auto-activate the primary admin email for convenience
   let role = dbUser?.role || 'USER';
@@ -45,6 +52,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     activeTraders: traderCount,
     recentTrades,
+    walletBalance,
     botStatus: isConfigured ? 'running' : 'stopped',
     userRole: role,
     userActive: isPrimaryAdmin ? true : active // Emergency bypass for primary admin
