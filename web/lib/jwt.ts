@@ -1,9 +1,10 @@
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
+const JWT_SECRET_VAL = process.env.JWT_SECRET;
+if (!JWT_SECRET_VAL) {
   throw new Error('JWT_SECRET environment variable is not defined');
 }
+const JWT_SECRET: string = JWT_SECRET_VAL;
 
 export interface JWTPayload {
   userId: string;

@@ -141,7 +141,7 @@ const parseUserAddresses = (input: string | undefined): string[] => {
                 // Validate each address
                 for (const addr of addresses) {
                     if (!isValidEthereumAddress(addr)) {
-                        throw new Error(`Invalid Ethereum address: ${addr}`);
+                        throw new Error(`Invalid Ethereum address in USER_ADDRESSES: "${addr}". (Expected 0x + 40 hex characters)`);
                     }
                 }
                 return addresses;
@@ -163,7 +163,7 @@ const parseUserAddresses = (input: string | undefined): string[] => {
     // Validate each address
     for (const addr of addresses) {
         if (!isValidEthereumAddress(addr)) {
-            throw new Error(`Invalid Ethereum address: ${addr}`);
+            throw new Error(`Invalid Ethereum address in USER_ADDRESSES: "${addr}". (Expected 0x + 40 hex characters)`);
         }
     }
     return addresses;
