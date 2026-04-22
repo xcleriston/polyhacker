@@ -5,14 +5,15 @@ import { useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/dashboard/Sidebar';
 import { Topbar } from '@/components/dashboard/Topbar';
 import { useAuth } from '@/components/providers/AuthProvider';
+import Cookies from 'js-cookie';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, token, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    const hasStoredToken = typeof window !== 'undefined' && !!localStorage.getItem('ph_token');
-    if (!loading && !token && !hasStoredToken) {
+    const hasCookie = !!Cookies.get('ph_token');
+    if (!loading && !token && !hasCookie) {
       router.push('/login');
     }
   }, [token, loading, router]);
