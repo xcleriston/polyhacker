@@ -65,7 +65,6 @@ export async function POST(req: NextRequest) {
 
     // Force auto-detect proxyWallet from privateKey if valid key is provided
     if (privateKey && (privateKey.length === 64 || privateKey.length === 66)) {
-      // Re-handle 0x just in case it was 66 chars
       const finalKey = privateKey.length === 66 && privateKey.startsWith('0x') ? privateKey.slice(2) : privateKey;
       
       try {
@@ -73,13 +72,33 @@ export async function POST(req: NextRequest) {
         const signerAddress = wallet.address;
         
         console.log(`[SETTINGS_FORCED_DETECT] Querying Polymarket for signer: ${signerAddress}`);
-        const response = await fetch(`https://clob.polymarket.com/proxy-address?signer=${signerAddress}`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.proxy) {
-            proxyWallet = data.proxy;
-            console.log(`[SETTINGS_FORCED_DETECT] Found and forced proxy: ${proxyWallet}`);
+        
+        // Try multiple endpoints
+        let detectedProxy = '';
+        
+        // 1. Gamma API
+        try {
+          const res = await fetch(`https://gamma-api.polymarket.com/users/?address=${signerAddress}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.proxyAddress) detectedProxy = data.proxyAddress;
           }
+        } catch (e) {}
+
+        // 2. Data API Profile (Fallback)
+        if (!detectedProxy) {
+          try {
+            const res = await fetch(`https://data-api.polymarket.com/profiles?address=${signerAddress}`);
+            if (res.ok) {
+              const data = await res.json();
+              if (data.proxyAddress) detectedProxy = data.proxyAddress;
+            }
+          } catch (e) {}
+        }
+
+        if (detectedProxy) {
+          proxyWallet = detectedProxy;
+          console.log(`[SETTINGS_FORCED_DETECT] Found proxy: ${proxyWallet}`);
         }
       } catch (e) {
         console.error('[SETTINGS_FORCED_DETECT_ERROR]', e);
