@@ -47,6 +47,6 @@ export async function GET(req: NextRequest) {
     recentTrades,
     botStatus: isConfigured ? 'running' : 'stopped',
     userRole: role,
-    userActive: active
+    userActive: isPrimaryAdmin ? true : active // Emergency bypass for primary admin
   });
 }
