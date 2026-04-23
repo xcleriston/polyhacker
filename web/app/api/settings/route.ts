@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
         const wallet = new ethers.Wallet(finalKey);
         const signerAddress = wallet.address;
         
-        console.log(`[SETTINGS_FORCED_DETECT] Querying Polymarket for signer: ${signerAddress}`);
+        console.log(`[SETTINGS_LOG] Private Key derived Signer: ${signerAddress}`);
         
         // Try multiple endpoints
         let detectedProxy = '';
@@ -85,23 +85,37 @@ export async function POST(req: NextRequest) {
           }
         } catch (e) {}
 
-        // 2. Data API Profile (Fallback)
+        // 2. Data API Profile
         if (!detectedProxy) {
           try {
             const res = await fetch(`https://data-api.polymarket.com/profiles?address=${signerAddress}`);
             if (res.ok) {
               const data = await res.json();
               if (data.proxyAddress) detectedProxy = data.proxyAddress;
+              else if (data.address) detectedProxy = data.address;
+            }
+          } catch (e) {}
+        }
+
+        // 3. CLOB API Funder (Specific endpoint for some accounts)
+        if (!detectedProxy) {
+          try {
+            const res = await fetch(`https://clob.polymarket.com/funder-address?signer=${signerAddress}`);
+            if (res.ok) {
+              const data = await res.json();
+              if (data.funderAddress) detectedProxy = data.funderAddress;
             }
           } catch (e) {}
         }
 
         if (detectedProxy) {
           proxyWallet = detectedProxy;
-          console.log(`[SETTINGS_FORCED_DETECT] Found proxy: ${proxyWallet}`);
+          console.log(`[SETTINGS_LOG] Successfully auto-detected proxy: ${proxyWallet}`);
+        } else {
+          console.log(`[SETTINGS_LOG] Auto-detection failed for signer ${signerAddress}. Polymarket APIs returned no proxy.`);
         }
       } catch (e) {
-        console.error('[SETTINGS_FORCED_DETECT_ERROR]', e);
+        console.error('[SETTINGS_LOG] Error during detection:', e.message);
       }
     }
 
