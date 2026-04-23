@@ -28,6 +28,7 @@ export async function GET(req: NextRequest) {
   // Fetch balance if proxyWallet or privateKey exists
   let walletBalance = 0;
   let walletAddressUsed = '';
+  console.log(`[DashboardAPI] Settings found: ${!!settings}, PrivateKey: ${!!settings?.privateKey}`);
   if (settings?.proxyWallet || settings?.privateKey) {
     const result = await getWalletBalance(settings?.proxyWallet || undefined, settings?.privateKey || undefined);
     walletBalance = result.balance;
