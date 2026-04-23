@@ -14,7 +14,7 @@ COPY package*.json ./
 RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 COPY --from=builder /app/dist/ ./dist/
 COPY start.sh ./
-RUN chmod +x start.sh && mkdir -p /app/data
+RUN chmod +x start.sh && mkdir -p /app/data && chown -R node:node /app/data
 
 EXPOSE 3000
 USER node

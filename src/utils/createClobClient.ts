@@ -17,8 +17,15 @@ const isGnosisSafe = async (address: string): Promise<boolean> => {
         // If code is not "0x", then it's a contract (likely Gnosis Safe)
         return code !== '0x';
     } catch (error) {
-        Logger.error(`Error checking wallet type: ${error}`);
-        return false;
+        // Fallback to public RPC if main one fails
+        try {
+            const provider = new ethers.providers.JsonRpcProvider('https://polygon-rpc.com');
+            const code = await provider.getCode(address);
+            return code !== '0x';
+        } catch (innerError) {
+            Logger.error(`Error checking wallet type: ${error}`);
+            return false;
+        }
     }
 };
 
