@@ -1,22 +1,11 @@
 import { ethers } from 'ethers';
-import { ClobClient } from '@polymarket/clob-client';
+import { ClobClient, SignatureType } from '@polymarket/clob-client';
 
-/**
- * Signature Types for Polymarket
- * 0: EOA
- * 1: Poly (Legacy)
- * 2: Gnosis Safe / Proxy
- */
-export enum SignatureType {
-    EOA = 0,
-    POLY = 1,
-    GNOSIS_SAFE = 2
-}
 /**
  * Agent 3: Wallet Detection Engine
  */
 
-const getSignatureType = async (address: string, provider: ethers.providers.Provider): Promise<number> => {
+const getSignatureType = async (address: string, provider: ethers.providers.Provider): Promise<SignatureType> => {
     try {
         // If it looks like a proxy address, we should be careful
         const code = await provider.getCode(address);
