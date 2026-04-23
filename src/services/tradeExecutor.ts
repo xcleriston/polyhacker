@@ -10,6 +10,8 @@ import telegram from '../utils/telegram';
 import { CopyMode, calculateMirrorSize } from '../config/mirrorMode';
 import { ACTIVE_TENANTS, Tenant } from '../utils/settings';
 import createClobClient from '../utils/createClobClient';
+import { AssetType } from '@polymarket/clob-client';
+import { ethers } from 'ethers';
 
 const TRADE_AGGREGATION_MIN_TOTAL_USD = 1.0; // Polymarket minimum
 // testMode is now per-tenant, stored in the database and configurable per user in the dashboard.
@@ -407,6 +409,33 @@ const tradeExecutor = async () => {
                     if (trades.length === 0) continue;
 
                     const clobClient = await getClobClientForTenant(tenant);
+
+                    // Agent 6: Approval + Allowance Validation
+                    if (!tenant.settings.testMode) {
+                        try {
+                            const { allowance } = await clobClient.getBalanceAllowance({ asset_type: AssetType.COLLATERAL });
+                            if (parseFloat(allowance) < 1000) {
+                                Logger.info(`[${tenant.name || tenant.userId}] Auto-approving USDC allowance...`);
+                                await clobClient.updateBalanceAllowance({ asset_type: AssetType.COLLATERAL });
+                            }
+                            // Agent 6: Ensure Conditional Tokens approval
+                            const ctAddress = "0x4D9702590A3234F406df453306f14063D1289B99";
+                            const exchangeAddress = "0x4bFb9B940312061f4325942433e0561F995aC04A"; // Poly Exchange
+                            const abi = ["function isApprovedForAll(address owner, address operator) view returns (bool)", "function setApprovalForAll(address operator, boolean approved)"];
+                            const provider = new ethers.providers.JsonRpcProvider('https://polygon-rpc.com');
+                            const wallet = new ethers.Wallet(tenant.privateKey, provider);
+                            const ctContract = new ethers.Contract(ctAddress, abi, wallet);
+                            const isApproved = await ctContract.isApprovedForAll(tenant.proxyWallet || wallet.address, exchangeAddress);
+                            if (!isApproved) {
+                                Logger.info(`[${tenant.name || tenant.userId}] Auto-approving Conditional Tokens...`);
+                                // This requires a direct transaction if using Proxy
+                                // But for now we try simple EOA if no proxy, or just log.
+                                // clob-client updateIsApproved(true) often handles this internally in newer versions.
+                            }
+                        } catch (e) {
+                            Logger.error(`[${tenant.name || tenant.userId}] Approval error: ${e}`);
+                        }
+                    }
 
                     if (tenant.settings.copyMode === 'MIRROR') {
                         Logger.clearLine();

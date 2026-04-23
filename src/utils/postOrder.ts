@@ -156,6 +156,7 @@ const postOrder = async (
                 `Creating order: $${orderSize.toFixed(2)} @ $${minPriceAsk.price} (Balance: $${my_balance.toFixed(2)})`
             );
             // Order args logged internally
+            // Agent 5: Build, Sign (EIP-712), and Post
             const signedOrder = await clobClient.createMarketOrder(order_arges);
             const resp = await clobClient.postOrder(signedOrder, OrderType.FOK);
             if (resp.success === true) {
