@@ -1,7 +1,7 @@
 import { Telegraf } from 'telegraf';
-import Logger from '../utils/logger';
-import { ACTIVE_TENANTS } from '../utils/settings';
-import { ENV } from '../config/env';
+import Logger from '@/lib/logger';
+import { ACTIVE_TENANTS } from '@/lib/settings';
+import { ENV } from '@/lib/config/env';
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN || '');
 
@@ -45,3 +45,4 @@ export const startTelegramBot = () => {
     process.once('SIGINT', () => bot.stop('SIGINT'));
     process.once('SIGTERM', () => bot.stop('SIGTERM'));
 };
+

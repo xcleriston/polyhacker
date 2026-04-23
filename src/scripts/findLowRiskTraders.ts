@@ -709,3 +709,4 @@ main().catch((error) => {
     console.error(colors.red('Fatal error:'), error);
     process.exit(1);
 });
+

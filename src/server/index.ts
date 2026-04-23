@@ -1,6 +1,6 @@
 import express from 'express';
 import swaggerUi from 'swagger-ui-express';
-import { getDbDir } from '../config/db';
+import { getDbDir } from '@/lib/config/db';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -149,3 +149,4 @@ export const startServer = (port: number = parseInt(process.env.PORT || '3000'))
 };
 
 export default app;
+

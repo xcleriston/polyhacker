@@ -1,9 +1,9 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-import connectDB, { closeDB } from '../config/db';
-import { performHealthCheck, logHealthCheck } from '../utils/healthCheck';
-import { ENV } from '../config/env';
+import connectDB, { closeDB } from '@/lib/config/db';
+import { performHealthCheck, logHealthCheck } from '@/lib/healthCheck';
+import { ENV } from '@/lib/config/env';
 
 const colors = {
     reset: '\x1b[0m',
@@ -122,3 +122,4 @@ const main = async () => {
 };
 
 main();
+

@@ -1,7 +1,7 @@
 import { AssetType, ClobClient, OrderType, Side } from '@polymarket/clob-client';
-import { ENV } from '../config/env';
-import createClobClient from '../utils/createClobClient';
-import fetchData from '../utils/fetchData';
+import { ENV } from '@/lib/config/env';
+import createClobClient from '@/polymarket/createClobClient';
+import fetchData from '@/lib/fetchData';
 
 const PROXY_WALLET = ENV.PROXY_WALLET;
 const USER_ADDRESSES = ENV.USER_ADDRESSES;
@@ -212,7 +212,7 @@ const buildTrackedSet = async (targetTraders: string[]): Promise<Set<string>> =>
     return tracked;
 };
 
-import { syncDatabase, ACTIVE_TENANTS, Tenant } from '../utils/settings';
+import { syncDatabase, ACTIVE_TENANTS, Tenant } from '@/lib/settings';
 
 const logPositionHeader = (position: Position, index: number, total: number) => {
     console.log(`\n${index + 1}/${total} ▶ ${position.title || position.slug || position.asset}`);
@@ -296,3 +296,4 @@ main()
         console.error('❌ Script aborted due to error:', error);
         process.exit(1);
     });
+

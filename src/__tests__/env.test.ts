@@ -38,7 +38,7 @@ describe('env.ts configuration', () => {
         Object.assign(process.env, baseEnv, overrides);
         let ENV: any;
         jest.isolateModules(() => {
-            ENV = require('../config/env').ENV;
+            ENV = require('@/lib/config/env').ENV;
         });
         return ENV;
     };
@@ -66,7 +66,7 @@ describe('env.ts configuration', () => {
         expect(() => {
             jest.isolateModules(() => {
                 // Don't set any env vars
-                require('../config/env');
+                require('@/lib/config/env');
             });
         }).toThrow('Missing required environment variables');
     });
@@ -97,3 +97,4 @@ describe('env.ts configuration', () => {
         expect(env.TRADE_AGGREGATION_ENABLED).toBe(false);
     });
 });
+

@@ -1,7 +1,7 @@
 import { ethers } from 'ethers';
 import { AssetType, ClobClient, OrderType, Side } from '@polymarket/clob-client';
 import { SignatureType } from '@polymarket/order-utils';
-import { ENV } from '../config/env';
+import { ENV } from '@/lib/config/env';
 
 const PROXY_WALLET = ENV.PROXY_WALLET;
 const PRIVATE_KEY = ENV.PRIVATE_KEY;
@@ -306,3 +306,4 @@ main()
         console.error('❌ Unhandled error:', error);
         process.exit(1);
     });
+

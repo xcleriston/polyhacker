@@ -1,6 +1,6 @@
 import axios from 'axios';
-import { ENV } from '../config/env';
-import getMyBalance from '../utils/getMyBalance';
+import { ENV } from '@/lib/config/env';
+import getMyBalance from '@/polymarket/getMyBalance';
 
 // Simple console colors without chalk
 const colors = {
@@ -572,3 +572,4 @@ async function main() {
 }
 
 main();
+

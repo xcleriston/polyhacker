@@ -1,5 +1,5 @@
-import fetchData from '../utils/fetchData';
-import { ENV } from '../config/env';
+import fetchData from '@/lib/fetchData';
+import { ENV } from '@/lib/config/env';
 
 const WALLET = ENV.PROXY_WALLET;
 
@@ -103,3 +103,4 @@ main()
         console.error('❌ Error:', error);
         process.exit(1);
     });
+

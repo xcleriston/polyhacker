@@ -1,4 +1,4 @@
-jest.mock('../config/env', () => ({
+jest.mock('@/lib/config/env', () => ({
     ENV: {
         RETRY_LIMIT: 2,
         COPY_STRATEGY_CONFIG: {
@@ -12,7 +12,7 @@ jest.mock('../config/env', () => ({
     },
 }));
 
-jest.mock('../models/userHistory', () => ({
+jest.mock('@/lib/models/userHistory', () => ({
     getUserActivityModel: jest.fn(() => ({
         updateOne: jest.fn().mockReturnValue({ exec: jest.fn() }),
         updateMany: jest.fn().mockReturnValue({ exec: jest.fn() }),
@@ -21,9 +21,9 @@ jest.mock('../models/userHistory', () => ({
 }));
 
 const mockLogger = { info: jest.fn(), warning: jest.fn(), error: jest.fn(), success: jest.fn(), orderResult: jest.fn(), separator: jest.fn(), trade: jest.fn(), balance: jest.fn(), header: jest.fn(), clearLine: jest.fn(), waiting: jest.fn() };
-jest.mock('../utils/logger', () => ({ __esModule: true, default: mockLogger }));
+jest.mock('@/lib/logger', () => ({ __esModule: true, default: mockLogger }));
 
-import postOrder from '../utils/postOrder';
+import postOrder from '@/polymarket/postOrder';
 import { Side } from '@polymarket/clob-client';
 
 const makeTrade = (overrides = {}) => ({
@@ -156,3 +156,4 @@ describe('postOrder', () => {
         expect(client.createMarketOrder).not.toHaveBeenCalled();
     });
 });
+

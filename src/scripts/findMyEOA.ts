@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
-import { ENV } from '../config/env';
-import fetchData from '../utils/fetchData';
+import { ENV } from '@/lib/config/env';
+import fetchData from '@/lib/fetchData';
 
 const PRIVATE_KEY = ENV.PRIVATE_KEY;
 const PROXY_WALLET = ENV.PROXY_WALLET;
@@ -150,3 +150,4 @@ async function analyzeWallets() {
 }
 
 analyzeWallets().catch(console.error);
+

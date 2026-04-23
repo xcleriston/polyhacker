@@ -1,15 +1,15 @@
 import { ClobClient } from '@polymarket/clob-client';
-import { UserActivityInterface, UserPositionInterface } from '../interfaces/User';
-import { ENV } from '../config/env';
-import { getUserActivityModel } from '../models/userHistory';
-import fetchData from '../utils/fetchData';
-import getMyBalance from '../utils/getMyBalance';
-import postOrder from '../utils/postOrder';
-import Logger from '../utils/logger';
-import telegram from '../utils/telegram';
-import { CopyMode, calculateMirrorSize } from '../config/mirrorMode';
-import { ACTIVE_TENANTS, Tenant } from '../utils/settings';
-import createClobClient from '../utils/createClobClient';
+import { UserActivityInterface, UserPositionInterface } from '@/lib/interfaces/User';
+import { ENV } from '@/lib/config/env';
+import { getUserActivityModel } from '@/lib/models/userHistory';
+import fetchData from '@/lib/fetchData';
+import getMyBalance from '@/polymarket/getMyBalance';
+import postOrder from '@/polymarket/postOrder';
+import Logger from '@/lib/logger';
+import telegram from '@/lib/telegram';
+import { CopyMode, calculateMirrorSize } from '@/lib/config/mirrorMode';
+import { ACTIVE_TENANTS, Tenant } from '@/lib/settings';
+import createClobClient from '@/polymarket/createClobClient';
 import { AssetType } from '@polymarket/clob-client';
 import { ethers } from 'ethers';
 
@@ -510,3 +510,4 @@ const tradeExecutor = async () => {
 };
 
 export default tradeExecutor;
+

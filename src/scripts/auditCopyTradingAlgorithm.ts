@@ -1,7 +1,7 @@
 import axios from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
-import { ENV } from '../config/env';
+import { ENV } from '@/lib/config/env';
 
 // Console colors
 const colors = {
@@ -853,3 +853,4 @@ async function main() {
 }
 
 main();
+

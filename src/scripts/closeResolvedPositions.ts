@@ -1,7 +1,7 @@
 import { AssetType, ClobClient, OrderType, Side } from '@polymarket/clob-client';
-import { ENV } from '../config/env';
-import createClobClient from '../utils/createClobClient';
-import fetchData from '../utils/fetchData';
+import { ENV } from '@/lib/config/env';
+import createClobClient from '@/polymarket/createClobClient';
+import fetchData from '@/lib/fetchData';
 
 const PROXY_WALLET = ENV.PROXY_WALLET;
 const RETRY_LIMIT = ENV.RETRY_LIMIT;
@@ -215,7 +215,7 @@ const logPositionHeader = (position: Position, index: number, total: number) => 
     }
 };
 
-import { syncDatabase, ACTIVE_TENANTS, Tenant } from '../utils/settings';
+import { syncDatabase, ACTIVE_TENANTS, Tenant } from '@/lib/settings';
 
 const main = async () => {
     console.log('🚀 Closing resolved positions for all active tenants');
@@ -302,3 +302,4 @@ main()
         console.error('❌ Script aborted due to error:', error);
         process.exit(1);
     });
+

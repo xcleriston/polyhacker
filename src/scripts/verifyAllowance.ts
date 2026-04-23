@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { ENV } from '../config/env';
+import { ENV } from '@/lib/config/env';
 
 const PROXY_WALLET = ENV.PROXY_WALLET;
 const RPC_URL = ENV.RPC_URL;
@@ -76,3 +76,4 @@ async function verifyAllowance() {
 }
 
 verifyAllowance();
+

@@ -2,7 +2,7 @@ import axios from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
 import moment from 'moment';
-import { ENV } from '../config/env';
+import { ENV } from '@/lib/config/env';
 
 // Simple colors without chalk (to avoid ESM issues)
 const colors = {
@@ -1083,3 +1083,4 @@ async function main() {
 }
 
 main();
+

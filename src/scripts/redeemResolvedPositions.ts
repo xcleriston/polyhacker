@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
-import { ENV } from '../config/env';
-import fetchData from '../utils/fetchData';
+import { ENV } from '@/lib/config/env';
+import fetchData from '@/lib/fetchData';
 
 const PROXY_WALLET = ENV.PROXY_WALLET;
 const PRIVATE_KEY = ENV.PRIVATE_KEY;
@@ -245,3 +245,4 @@ main()
         console.error('❌ Script aborted due to error:', error);
         process.exit(1);
     });
+

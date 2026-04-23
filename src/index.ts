@@ -1,11 +1,11 @@
-import connectDB, { closeDB } from './config/db';
-import { ENV } from './config/env';
-import createClobClient from './utils/createClobClient';
-import tradeExecutor, { stopTradeExecutor } from './services/tradeExecutor';
-import tradeMonitor, { stopTradeMonitor } from './services/tradeMonitor';
+import connectDB, { closeDB } from '@/lib/config/db';
+import { ENV } from '@/lib/config/env';
+import createClobClient from '@/polymarket/createClobClient';
+import tradeExecutor, { stopTradeExecutor } from '@/services/tradeExecutor';
+import tradeMonitor, { stopTradeMonitor } from '@/services/tradeMonitor';
 import { startServer } from './server';
-import Logger from './utils/logger';
-import { performHealthCheck, logHealthCheck } from './utils/healthCheck';
+import Logger from '@/lib/logger';
+import { performHealthCheck, logHealthCheck } from '@/lib/healthCheck';
 
 const USER_ADDRESSES = ENV.USER_ADDRESSES;
 const PROXY_WALLET = ENV.PROXY_WALLET;
@@ -85,7 +85,7 @@ export const main = async () => {
         await connectDB();
         
         // Wait for database configuration before proceeding
-        const { waitForDatabaseConfig, fetchTargetTraders } = await import('./utils/settings');
+        const { waitForDatabaseConfig, fetchTargetTraders } = await import('@/lib/settings');
         await waitForDatabaseConfig();
         await fetchTargetTraders();
 
@@ -101,8 +101,8 @@ export const main = async () => {
         }
 
         // Send Telegram startup notification if enabled
-        const myBalance = await import('./utils/getMyBalance').then(m => m.default(ENV.PROXY_WALLET)).catch(() => 0);
-        await import('./utils/telegram').then(m => m.default.startup(ENV.USER_ADDRESSES.length, myBalance));
+        const myBalance = await import('@/polymarket/getMyBalance').then(m => m.default(ENV.PROXY_WALLET)).catch(() => 0);
+        await import('@/lib/telegram').then(m => m.default.startup(ENV.USER_ADDRESSES.length, myBalance));
 
         Logger.separator();
         Logger.info('Starting trade monitor...');
@@ -112,7 +112,7 @@ export const main = async () => {
         tradeExecutor();
 
         // Start Telegram Bot Listener
-        const { startTelegramBot } = await import('./services/telegramBot');
+        const { startTelegramBot } = await import('@/services/telegramBot');
         startTelegramBot();
 
         // Start web UI + API server
@@ -124,3 +124,4 @@ export const main = async () => {
 };
 
 main();
+

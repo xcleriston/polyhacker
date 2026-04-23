@@ -86,3 +86,4 @@ console.log('  • Emergency stop: Press Ctrl+C');
 console.log('');
 console.log(`${colors.yellow}⚠️  Always start with small amounts and monitor regularly!${colors.reset}\n`);
 
+

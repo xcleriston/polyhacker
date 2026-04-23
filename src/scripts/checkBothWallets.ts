@@ -1,6 +1,6 @@
-import { ENV } from '../config/env';
-import fetchData from '../utils/fetchData';
-import getMyBalance from '../utils/getMyBalance';
+import { ENV } from '@/lib/config/env';
+import fetchData from '@/lib/fetchData';
+import getMyBalance from '@/polymarket/getMyBalance';
 
 const PROXY_WALLET = ENV.PROXY_WALLET;
 
@@ -253,3 +253,4 @@ const checkBothWallets = async () => {
 };
 
 checkBothWallets();
+

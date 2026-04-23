@@ -1,7 +1,7 @@
 import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
-import { ENV } from '../config/env';
+import { ENV } from '@/lib/config/env';
 
 const USER_ADDRESSES = ENV.USER_ADDRESSES;
 
@@ -170,3 +170,4 @@ const main = async () => {
 };
 
 main();
+

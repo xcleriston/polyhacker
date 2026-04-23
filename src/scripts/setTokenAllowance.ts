@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 import { getContractConfig } from '@polymarket/clob-client';
-import { ENV } from '../config/env';
+import { ENV } from '@/lib/config/env';
 
 const PROXY_WALLET = ENV.PROXY_WALLET;
 const PRIVATE_KEY = ENV.PRIVATE_KEY;
@@ -99,3 +99,4 @@ setTokenAllowance()
         console.error('❌ Fatal error:', error);
         process.exit(1);
     });
+

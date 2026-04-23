@@ -1,8 +1,8 @@
-import { ENV } from '../config/env';
-import { getUserActivityModel, getUserPositionModel } from '../models/userHistory';
-import fetchData from '../utils/fetchData';
-import Logger from '../utils/logger';
-import { detectOrderType } from '../config/mirrorMode';
+import { ENV } from '@/lib/config/env';
+import { getUserActivityModel, getUserPositionModel } from '@/lib/models/userHistory';
+import fetchData from '@/lib/fetchData';
+import Logger from '@/lib/logger';
+import { detectOrderType } from '@/lib/config/mirrorMode';
 
 // Create activity and position models for each user dynamically
 const getUserModels = () => {
@@ -29,7 +29,7 @@ const init = async () => {
         const myPositions = await fetchData(myPositionsUrl);
 
         // Get current USDC balance
-        const getMyBalance = (await import('../utils/getMyBalance')).default;
+        const getMyBalance = (await import('@/polymarket/getMyBalance')).default;
         const currentBalance = await getMyBalance(ENV.PROXY_WALLET);
 
         if (Array.isArray(myPositions) && myPositions.length > 0) {
@@ -250,3 +250,4 @@ const tradeMonitor = async () => {
 };
 
 export default tradeMonitor;
+

@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
-import { ENV } from '../config/env';
-import fetchData from '../utils/fetchData';
+import { ENV } from '@/lib/config/env';
+import fetchData from '@/lib/fetchData';
 
 const PRIVATE_KEY = ENV.PRIVATE_KEY;
 const RPC_URL = ENV.RPC_URL;
@@ -209,3 +209,4 @@ transferPositions().catch((error) => {
     console.error('\n❌ Critical error:', error);
     process.exit(1);
 });
+

@@ -5,7 +5,7 @@ import {
     parseTieredMultipliers,
     getTradeMultiplier,
     validateCopyStrategyConfig,
-} from '../config/copyStrategy';
+} from '@/lib/config/copyStrategy';
 
 describe('calculateOrderSize', () => {
     const baseConfig: CopyStrategyConfig = {
@@ -159,3 +159,4 @@ describe('validateCopyStrategyConfig', () => {
         expect(errors).toContain('copySize for PERCENTAGE strategy should be <= 100');
     });
 });
+

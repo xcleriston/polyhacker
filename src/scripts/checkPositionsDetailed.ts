@@ -1,5 +1,5 @@
-import { ENV } from '../config/env';
-import fetchData from '../utils/fetchData';
+import { ENV } from '@/lib/config/env';
+import fetchData from '@/lib/fetchData';
 
 const PROXY_WALLET = ENV.PROXY_WALLET;
 
@@ -88,3 +88,4 @@ async function checkPositions() {
 }
 
 checkPositions().catch(console.error);
+

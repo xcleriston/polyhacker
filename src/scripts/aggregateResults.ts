@@ -338,3 +338,4 @@ aggregateResults().catch((error) => {
     console.error(colors.red('✗ Error:'), error);
     process.exit(1);
 });
+
