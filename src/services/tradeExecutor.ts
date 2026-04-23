@@ -54,7 +54,7 @@ const checkDailyLoss = async (tenant: Tenant): Promise<boolean> => {
             if (!killSwitches.get(userId)) {
                 Logger.error(`🛑 [${tenant.name || userId}] KILL SWITCH: Daily loss ${lossPct.toFixed(1)}% exceeds ${capPct}% cap. Trading halted.`);
                 killSwitches.set(userId, true);
-                telegram.killSwitch(lossPct, tenant.settings.telegramChatId);
+                telegram.killSwitch(lossPct);
             }
             return false;
         }
@@ -240,7 +240,7 @@ const doMirrorTrading = async (tenant: Tenant, clobClient: ClobClient, trades: T
             trade.userAddress
         );
 
-        telegram.tradeExecuted(trade.side || 'BUY', mirroredSize, trade.price || 0, trade.slug || trade.asset, tenant.settings.telegramChatId);
+        telegram.tradeExecuted(trade.side || 'BUY', mirroredSize, trade.price || 0, trade.slug || trade.asset);
         Logger.separator();
     }
 };
@@ -299,7 +299,7 @@ const doTrading = async (tenant: Tenant, clobClient: ClobClient, trades: TradeWi
             trade.userAddress
         );
 
-        telegram.tradeExecuted(trade.side || 'BUY', trade.usdcSize, trade.price || 0, trade.slug || trade.asset, tenant.settings.telegramChatId);
+        telegram.tradeExecuted(trade.side || 'BUY', trade.usdcSize, trade.price || 0, trade.slug || trade.asset);
         Logger.separator();
     }
 };
@@ -357,7 +357,7 @@ const doAggregatedTrading = async (tenant: Tenant, clobClient: ClobClient, aggre
             agg.userAddress
         );
 
-        telegram.tradeExecuted(agg.side || 'BUY', agg.totalUsdcSize, agg.averagePrice || 0, agg.slug || agg.asset, tenant.settings.telegramChatId);
+        telegram.tradeExecuted(agg.side || 'BUY', agg.totalUsdcSize, agg.averagePrice || 0, agg.slug || agg.asset);
         Logger.separator();
     }
 };

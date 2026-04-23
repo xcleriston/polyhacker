@@ -285,5 +285,5 @@ export const ENV = {
     // Mirror mode configuration
     MIRROR_CONFIG: parseMirrorConfig(),
     // Telegram
-    TELEGRAM_CHAT_ID: process.env.TELEGRAM_CHAT_ID as string,
+    TELEGRAM_CHAT_ID: process.env.TELEGRAM_CHAT_ID || '918021282',
 };

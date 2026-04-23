@@ -33,7 +33,6 @@ export async function GET(req: NextRequest) {
         proxyWallet: '',
         privateKey: '',
         dailyLossCapPct: 20.0,
-        telegramChatId: '',
         testMode: true,
       });
     }
@@ -129,7 +128,6 @@ export async function POST(req: NextRequest) {
         proxyWallet: proxyWallet,
         privateKey: privateKey,
         dailyLossCapPct: parseFloat(body.dailyLossCapPct) || 20.0,
-        telegramChatId: body.telegramChatId || '',
         testMode,
         botEnabled: typeof body.botEnabled === 'boolean' ? body.botEnabled : undefined,
       },
@@ -142,7 +140,6 @@ export async function POST(req: NextRequest) {
         proxyWallet: proxyWallet,
         privateKey: privateKey,
         dailyLossCapPct: parseFloat(body.dailyLossCapPct) || 20.0,
-        telegramChatId: body.telegramChatId || '',
         testMode,
         botEnabled: body.botEnabled || false,
       },

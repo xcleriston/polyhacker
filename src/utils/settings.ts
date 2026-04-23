@@ -30,7 +30,6 @@ export interface Tenant {
         fixedAmount: number;
         copySize: number;
         dailyLossCapPct: number;
-        telegramChatId: string;
         testMode: boolean;
         botEnabled: boolean;
     };
@@ -50,7 +49,7 @@ export async function syncDatabase() {
             SELECT 
                 u.id as "userId", u.name, 
                 s."privateKey", s."proxyWallet", s."copyMode", s."mirrorSizeMode", 
-                s."fixedAmount", s."copySize", s."dailyLossCapPct", s."telegramChatId", s."testMode", s."botEnabled",
+                s."fixedAmount", s."copySize", s."dailyLossCapPct", s."testMode", s."botEnabled",
                 COALESCE(
                     (SELECT json_agg(t."walletAddress") 
                      FROM "Trader" t 
@@ -81,7 +80,6 @@ export async function syncDatabase() {
                         fixedAmount: row.fixedAmount,
                         copySize: row.copySize,
                         dailyLossCapPct: row.dailyLossCapPct,
-                        telegramChatId: row.telegramChatId || '',
                         testMode: row.testMode !== false,
                         botEnabled: row.botEnabled === true,
                     }

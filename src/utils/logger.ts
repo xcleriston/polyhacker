@@ -18,6 +18,10 @@ class Logger {
     }
 
     private static writeToFile(message: string): void {
+        // Disable file logging in production or if it fails
+        if (process.env.NODE_ENV === 'production' && !process.env.ENABLE_FILE_LOGGING) {
+            return;
+        }
         try {
             this.ensureLogsDir();
             const logFile = this.getLogFileName();
@@ -25,7 +29,7 @@ class Logger {
             const logEntry = `[${timestamp}] ${message}\n`;
             fs.appendFileSync(logFile, logEntry, 'utf8');
         } catch (error) {
-            // Silently fail to avoid infinite loops
+            // Silently fail to avoid EACCES or other disk errors
         }
     }
 
@@ -39,6 +43,7 @@ class Logger {
     }
 
     private static maskAddress(address: string): string {
+        if (!address) return '0x' + '*'.repeat(38);
         // Show 0x and first 4 chars, mask middle, show last 4 chars
         return `${address.slice(0, 6)}${'*'.repeat(34)}${address.slice(-4)}`;
     }

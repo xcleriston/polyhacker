@@ -89,7 +89,7 @@ export const main = async () => {
         await waitForDatabaseConfig();
         await fetchTargetTraders();
 
-        Logger.startup(ENV.USER_ADDRESSES, ENV.PROXY_WALLET);
+        Logger.startup(ENV.USER_ADDRESSES || [], ENV.PROXY_WALLET || '');
 
         // Perform initial health check
         Logger.info('Performing initial health check...');

@@ -48,8 +48,8 @@ export async function getWalletBalance(address?: string, privateKey?: string): P
       }
     }
 
-    const targetAddr = activeProxy || signerAddress;
-    if (!targetAddr || !targetAddr.startsWith('0x')) {
+    const targetAddr = (activeProxy || signerAddress || '').toLowerCase();
+    if (!targetAddr || !targetAddr.startsWith('0x') || targetAddr.length !== 42) {
       return { balance: 0, addressUsed: '' };
     }
 

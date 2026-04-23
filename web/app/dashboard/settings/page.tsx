@@ -22,7 +22,6 @@ export default function SettingsPage() {
     proxyWallet: '',
     privateKey: '',
     dailyLossCapPct: '20.0',
-    telegramChatId: '',
     testMode: true,
   });
 
@@ -47,7 +46,6 @@ export default function SettingsPage() {
           proxyWallet: data.proxyWallet || '',
           privateKey: data.privateKey || '',
           dailyLossCapPct: data.dailyLossCapPct?.toString() || '20.0',
-          telegramChatId: data.telegramChatId || '',
           testMode: data.testMode !== false, // default true
         });
       }
@@ -282,19 +280,9 @@ export default function SettingsPage() {
             />
             <p className="text-xs text-slate-500">Kill switch threshold. Bot stops if daily losses exceed this.</p>
           </div>
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Telegram Chat ID</label>
-            <Input
-              name="telegramChatId"
-              value={formData.telegramChatId}
-              onChange={handleChange}
-              placeholder="Ex: 123456789"
-            />
-            <p className="text-xs text-slate-500">
-              {formData.telegramChatId 
-                ? '✅ Bot vinculado. Você receberá notificações aqui.' 
-                : 'Para vincular, envie `/vincular ' + user?.email + '` para o bot @polyhacker_bot.'}
-            </p>
+          <div className="bg-violet-500/10 border border-violet-500/20 text-violet-300 p-3 rounded-lg text-sm flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+            <p>Admin notifications are sent to the primary Telegram Chat ID defined by the system administrator.</p>
           </div>
         </CardContent>
       </Card>

@@ -5,9 +5,9 @@ const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
 const isEnabled = (chatId?: string): boolean => !!TELEGRAM_BOT_TOKEN && !!(chatId || ENV.TELEGRAM_CHAT_ID);
 
-const send = async (message: string, chatId?: string): Promise<void> => {
-  if (!isEnabled(chatId)) return;
-  const targetChatId = chatId || ENV.TELEGRAM_CHAT_ID;
+const send = async (message: string, _chatId?: string): Promise<void> => {
+  if (!isEnabled()) return;
+  const targetChatId = ENV.TELEGRAM_CHAT_ID;
   try {
     await axios.post(
       `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
