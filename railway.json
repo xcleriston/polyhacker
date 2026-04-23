@@ -9,7 +9,7 @@
       },
       "build": {
         "builder": "DOCKERFILE",
-        "dockerfilePath": "Dockerfile.railway"
+        "dockerfilePath": "Dockerfile"
       },
       "deploy": {
         "startCommand": "npm run bot:start",
@@ -24,7 +24,7 @@
       },
       "build": {
         "builder": "DOCKERFILE",
-        "dockerfilePath": "Dockerfile.railway"
+        "dockerfilePath": "Dockerfile"
       },
       "deploy": {
         "startCommand": "npm run web:start",
