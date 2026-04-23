@@ -44,4 +44,4 @@ USER nextjs
 EXPOSE 3000
 ENV PORT=3000
 
-CMD ["npm", "run", "bot:start"]
+CMD ["npx", "tsx", "src/index.ts"]
