@@ -1,13 +1,13 @@
-import Datastore from '@seald-io/nedb';
+import NeDB from '@seald-io/nedb';
 import * as path from 'path';
 import { getDbDir } from '@/lib/config/db';
 
 // Cache datastores to avoid creating duplicates
-const datastoreCache: Map<string, Datastore> = new Map();
+const datastoreCache: Map<string, any> = new Map();
 
-const getDatastore = (name: string): Datastore => {
+const getDatastore = (name: string): any => {
     if (datastoreCache.has(name)) return datastoreCache.get(name)!;
-    const ds = new Datastore({ filename: path.join(getDbDir(), `${name}.db`), autoload: true });
+    const ds = new (NeDB as any)({ filename: path.join(getDbDir(), `${name}.db`), autoload: true });
     datastoreCache.set(name, ds);
     return ds;
 };
@@ -26,7 +26,7 @@ const createModel = (collectionName: string) => {
             return {
                 exec: () => ds.findAsync(query),
                 sort: (sortObj: Record<string, number>) => ({
-                    exec: () => ds.findAsync(query).then(docs =>
+                    exec: () => ds.findAsync(query).then((docs: any[]) =>
                         docs.sort((a: any, b: any) => {
                             for (const [key, dir] of Object.entries(sortObj)) {
                                 if (a[key] !== b[key]) return dir * (a[key] > b[key] ? 1 : -1);
@@ -46,7 +46,7 @@ const createModel = (collectionName: string) => {
         // Update many documents
         updateMany(query: Record<string, unknown>, update: Record<string, unknown>) {
             return ds.updateAsync(query, update, { multi: true })
-                .then((result) => ({ modifiedCount: typeof result === 'number' ? result : (result as any).numAffected || 0 }));
+                .then((result: any) => ({ modifiedCount: typeof result === 'number' ? result : (result as any).numAffected || 0 }));
         },
         // Find one and update (with upsert)
         findOneAndUpdate(query: Record<string, unknown>, update: Record<string, unknown>, options: { upsert?: boolean } = {}) {

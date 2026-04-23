@@ -27,8 +27,8 @@ export const startTelegramBot = () => {
 
     bot.command('status', async (ctx) => {
         try {
-            const activeCount = ACTIVE_TENANTS.filter(t => t.settings.botEnabled).length;
-            const totalTraders = ACTIVE_TENANTS.reduce((sum, t) => sum + t.targetTraders.length, 0);
+            const activeCount = ACTIVE_TENANTS.filter((t: any) => t.settings.botEnabled).length;
+            const totalTraders = ACTIVE_TENANTS.reduce((sum: number, t: any) => sum + t.targetTraders.length, 0);
             
             ctx.reply(`📊 *Sistema SaaS - Status Geral*\n\nUsuários Ativos: ${activeCount}\nTotal de Traders Monitorados: ${totalTraders}\n\nO bot está operando para todos os usuários com Live Mode ativo.`, { parse_mode: 'Markdown' });
         } catch (err) {

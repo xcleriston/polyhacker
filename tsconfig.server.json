@@ -3,10 +3,10 @@
   "compilerOptions": {
     "noEmit": false,
     "outDir": "dist",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "target": "ESNext"
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "target": "ES2022"
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "src/**/*.test.ts", "app/**/*"]
+  "exclude": ["node_modules", "src/**/*.test.ts", "app/**/*", "src/scripts/**/*"]
 }

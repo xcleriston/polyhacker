@@ -6,7 +6,7 @@
     "postinstall": "node src/scripts/postinstall.js",
     "help": "tsx src/scripts/help.ts",
     "setup": "tsx src/scripts/setup.ts",
-    "build": "npx prisma generate && next build && tsc -p tsconfig.server.json",
+    "build": "npx prisma generate && next build && tsc -p tsconfig.server.json && tsc-alias -p tsconfig.server.json",
     "bot:start": "node dist/index.js",
     "bot:dev": "tsx src/index.ts",
     "web:dev": "next dev",
@@ -107,10 +107,9 @@
     "prisma": "^5.22.0",
     "tailwindcss": "^4",
     "ts-jest": "^29.2.5",
-    "tsx": "^10.9.2",
+    "tsc-alias": "^1.8.16",
     "tsx": "^4.21.0",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.23.0"
   }
 }
-

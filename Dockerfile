@@ -1,7 +1,7 @@
-# Version: 2.2.0 (Node 20 Fix)
+# Version: 2.3.0 (Debian Fix)
 # Base stage
-FROM node:20-alpine AS base
-RUN apk add --no-cache libc6-compat
+FROM node:20-bullseye-slim AS base
+RUN apt-get update -y && apt-get install -y openssl
 WORKDIR /app
 
 # Dependencies stage
@@ -24,8 +24,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 # Create a non-root user
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs
+RUN groupadd --system --gid 1001 nodejs && \
+    useradd --system --uid 1001 -g nodejs nextjs
 
 # Copy essential files
 COPY --from=builder /app/public ./public

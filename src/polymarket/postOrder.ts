@@ -129,7 +129,7 @@ const postOrder = async (
         }
 
         const previousBuys = await UserActivity.find({ asset: trade.asset, conditionId: trade.conditionId, side: 'BUY', bot: true, myBoughtSize: { $gt: 0 } }).exec();
-        const totalBoughtTokens = previousBuys.reduce((sum, buy) => sum + (buy.myBoughtSize || 0), 0);
+        const totalBoughtTokens = previousBuys.reduce((sum: number, buy: any) => sum + (buy.myBoughtSize || 0), 0);
         
         let remaining = 0;
         if (!user_position) {

@@ -6,7 +6,7 @@ import { detectOrderType } from '@/lib/config/mirrorMode';
 
 // Create activity and position models for each user dynamically
 const getUserModels = () => {
-    return ENV.USER_ADDRESSES.map((address) => ({
+    return ENV.USER_ADDRESSES.map((address: string) => ({
         address,
         UserActivity: getUserActivityModel(address),
         UserPosition: getUserPositionModel(address),
@@ -78,7 +78,7 @@ const init = async () => {
 
         let totalValue = 0;
         let weightedPnl = 0;
-        positions.forEach((pos) => {
+        positions.forEach((pos: any) => {
             const value = pos.currentValue || 0;
             const pnl = pos.percentPnl || 0;
             totalValue += value;
@@ -88,9 +88,9 @@ const init = async () => {
         profitabilities.push(overallPnl);
 
         const topPositions = positions
-            .sort((a, b) => (b.percentPnl || 0) - (a.percentPnl || 0))
+            .sort((a: any, b: any) => (b.percentPnl || 0) - (a.percentPnl || 0))
             .slice(0, 3)
-            .map((p) => p.toObject());
+            .map((p: any) => p.toObject());
         positionDetails.push(topPositions);
     }
     Logger.clearLine();

@@ -104,14 +104,14 @@ const readTempTradesForTenant = async (tenant: Tenant): Promise<TradeWithUser[]>
     for (const address of tenant.targetTraders) {
         const model = getUserActivityModel(address);
         const trades = await model.find({ $and: [{ type: 'TRADE' }, { executedBy: { $ne: tenant.userId } }] }).exec();
-        allTrades.push(...trades.map(t => ({ ...(t.toObject() as UserActivityInterface), userAddress: address })));
+        allTrades.push(...trades.map((t: any) => ({ ...(t.toObject() as any), userAddress: address })));
     }
     return allTrades;
 };
 
 const markTradeExecuted = async (tenantId: string, trade: TradeWithUser) => {
     const UserActivity = getUserActivityModel(trade.userAddress);
-    await UserActivity.updateOne({ _id: trade._id }, { $push: { executedBy: tenantId } });
+    await UserActivity.updateOne({ _id: (trade as any)._id }, { $push: { executedBy: tenantId } });
 };
 
 const doTrading = async (tenant: Tenant, clobClient: ClobClient, trades: TradeWithUser[], useEoa: boolean) => {
@@ -128,7 +128,7 @@ const doTrading = async (tenant: Tenant, clobClient: ClobClient, trades: TradeWi
         try {
             const my_balance = await getMyBalance(useEoa ? '' : tenant.proxyWallet);
             await postOrder(clobClient, trade.side === 'BUY' ? 'buy' : 'sell', undefined, undefined, trade, my_balance, trade.userAddress, tenant.privateKey);
-            telegram.tradeExecuted(trade.side || 'BUY', trade.usdcSize, trade.price || 0, trade.slug || trade.asset);
+            telegram.tradeExecuted((trade as any).side || 'BUY', (trade as any).usdcSize, (trade as any).price || 0, (trade as any).slug || (trade as any).asset);
         } catch (err) {
             await handleTradingError(tenant, err);
         }
