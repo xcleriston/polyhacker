@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json(settings);
-  } catch (error) {
+  } catch (error: any) {
     console.error('[SETTINGS_GET]', error);
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
@@ -114,8 +114,8 @@ export async function POST(req: NextRequest) {
         } else {
           console.log(`[SETTINGS_LOG] Auto-detection failed for signer ${signerAddress}. Polymarket APIs returned no proxy.`);
         }
-      } catch (e) {
-        console.error('[SETTINGS_LOG] Error during detection:', e.message);
+      } catch (e: any) {
+        console.error('[SETTINGS_LOG] Error during detection:', e?.message || e);
       }
     }
 
@@ -149,7 +149,7 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json(updated);
-  } catch (error) {
+  } catch (error: any) {
     console.error('[SETTINGS_POST]', error);
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
