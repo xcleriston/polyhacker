@@ -12,6 +12,7 @@ import { ACTIVE_TENANTS, Tenant } from '@/lib/settings';
 import createClobClient from '@/polymarket/createClobClient';
 import { AssetType } from '@polymarket/clob-client';
 import { ethers } from 'ethers';
+import { prisma } from '@/lib/prisma';
 
 const TRADE_AGGREGATION_MIN_TOTAL_USD = 1.0;
 
@@ -120,6 +121,20 @@ const doTrading = async (tenant: Tenant, clobClient: ClobClient, trades: TradeWi
         if (!(await checkDailyLoss(tenant))) continue;
         await markTradeExecuted(tenant.userId, trade);
 
+        // Create record in Prisma for dashboard
+        const prismaTrade = await prisma.trade.create({
+            data: {
+                userId: tenant.userId,
+                traderAddress: trade.userAddress,
+                side: trade.side || 'BUY',
+                asset: trade.asset,
+                usdcSize: trade.usdcSize || 0,
+                price: trade.price || 0,
+                market: trade.title || trade.slug || 'Unknown Market',
+                status: tenant.settings.testMode ? 'SKIPPED (TEST MODE)' : 'PROCESSING'
+            }
+        });
+
         if (tenant.settings.testMode) {
             Logger.info(`🧪 [${tenant.name || tenant.userId}] TEST MODE detected`);
             continue;
@@ -127,9 +142,13 @@ const doTrading = async (tenant: Tenant, clobClient: ClobClient, trades: TradeWi
 
         try {
             const my_balance = await getMyBalance(useEoa ? '' : tenant.proxyWallet);
-            await postOrder(clobClient, trade.side === 'BUY' ? 'buy' : 'sell', undefined, undefined, trade, my_balance, trade.userAddress, tenant.privateKey);
+            await postOrder(clobClient, trade.side === 'BUY' ? 'buy' : 'sell', undefined, undefined, trade, my_balance, trade.userAddress, tenant.privateKey, prismaTrade.id);
             telegram.tradeExecuted((trade as any).side || 'BUY', (trade as any).usdcSize, (trade as any).price || 0, (trade as any).slug || (trade as any).asset);
         } catch (err) {
+            await prisma.trade.update({
+                where: { id: prismaTrade.id },
+                data: { status: `ERROR: ${err instanceof Error ? err.message : String(err)}` }
+            });
             await handleTradingError(tenant, err);
         }
     }

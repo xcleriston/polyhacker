@@ -7,10 +7,28 @@ import { ethers } from 'ethers';
  * Agent 5: Funder Validation
  */
 const validateAndCorrectFunder = async (signerAddress: string, providedFunder?: string): Promise<string> => {
+    // If user provided a specific proxy, trust it first
+    if (providedFunder && providedFunder.toLowerCase() !== signerAddress.toLowerCase() && providedFunder.length === 42) {
+        return providedFunder;
+    }
+
     try {
-        const profile = await fetchData(`https://data-api.polymarket.com/profiles?address=${signerAddress}`);
-        const officialProxy = profile?.proxyAddress || profile?.address;
-        return officialProxy || providedFunder || signerAddress;
+        const [profile, funderData] = await Promise.allSettled([
+            fetchData(`https://data-api.polymarket.com/profiles?address=${signerAddress}`),
+            fetchData(`https://clob.polymarket.com/funder-address?address=${signerAddress}`)
+        ]);
+
+        let officialProxy = null;
+        if (profile.status === 'fulfilled') {
+            officialProxy = (profile.value as any)?.proxyAddress || (profile.value as any)?.address;
+        }
+        if (!officialProxy && funderData.status === 'fulfilled') {
+            officialProxy = (funderData.value as any)?.funderAddress;
+        }
+
+        const finalProxy = officialProxy || providedFunder || signerAddress;
+        console.log(`[BalanceCheck] Auto-detected Funder: ${finalProxy}`);
+        return finalProxy;
     } catch (e) {
         return providedFunder || signerAddress;
     }
@@ -40,25 +58,26 @@ export const getWalletBalance = async (proxyWallet?: string, privateKey?: string
         const usdcAbi = ['function balanceOf(address) view returns (uint256)', 'function decimals() view returns (uint8)'];
         
         const contracts = [
-            '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174', // Bridged USDC
-            '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359'  // Native USDC
+            { addr: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174', name: 'Bridged USDC (USDC.e)' },
+            { addr: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359', name: 'Native USDC' }
         ];
 
-        for (const contractAddr of contracts) {
+        for (const item of contracts) {
             try {
-                const contract = new ethers.Contract(contractAddr, usdcAbi, provider);
+                const contract = new ethers.Contract(item.addr, usdcAbi, provider);
                 const rawBal = await contract.balanceOf(correctedFunder);
                 const decimals = await contract.decimals();
                 const formattedBal = parseFloat(ethers.utils.formatUnits(rawBal, decimals));
+                console.log(`[BalanceCheck] ${item.name} (${item.addr}): $${formattedBal}`);
                 if (formattedBal > 0) {
-                    console.log(`[BalanceCheck] Found ${formattedBal} USDC in contract ${contractAddr}`);
-                    balance = formattedBal;
-                    break;
+                    if (balance === 0) balance = formattedBal;
+                    else balance += formattedBal; // Sum if funds are split
                 }
             } catch (e) {
-                console.error(`[BalanceCheck] Fallback error for ${contractAddr}:`, e instanceof Error ? e.message : e);
+                console.error(`[BalanceCheck] Error checking ${item.name}:`, e instanceof Error ? e.message : e);
             }
         }
+        console.log(`[BalanceCheck] Total Direct Balance: $${balance}`);
     }
 
     console.log(`[BalanceCheck] Final Balance: ${balance}`);

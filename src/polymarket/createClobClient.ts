@@ -15,18 +15,45 @@ export enum SignatureType {
 /**
  * Agent 3: Wallet Detection Engine
  */
+const validateAndCorrectFunder = async (signerAddress: string, providedFunder?: string): Promise<string> => {
+    // If user provided a specific proxy, trust it first
+    if (providedFunder && providedFunder.toLowerCase() !== signerAddress.toLowerCase()) {
+        return providedFunder;
+    }
+
+    try {
+        // Try multiple endpoints for reliability
+        const [profile, funderData] = await Promise.allSettled([
+            fetchData(`https://data-api.polymarket.com/profiles?address=${signerAddress}`),
+            fetchData(`https://clob.polymarket.com/funder-address?address=${signerAddress}`)
+        ]);
+
+        let officialProxy = null;
+        if (profile.status === 'fulfilled') {
+            officialProxy = profile.value?.proxyAddress || profile.value?.address;
+        }
+        if (!officialProxy && funderData.status === 'fulfilled') {
+            officialProxy = funderData.value?.funderAddress;
+        }
+
+        return officialProxy || providedFunder || signerAddress;
+    } catch (e) {
+        return providedFunder || signerAddress;
+    }
+};
+
 const getSignatureType = async (address: string, provider: ethers.providers.Provider): Promise<number> => {
     try {
+        // If it looks like a proxy address, we should be careful
         const code = await provider.getCode(address);
-        // IF proxy wallet detected: signatureType = 1 OR 2
-        // Most Polymarket proxies are Gnosis Safes (SignatureType.POLY_GNOSIS_SAFE = 2)
-        if (code !== '0x') {
+        if (code && code !== '0x') {
             return SignatureType.GNOSIS_SAFE;
         }
-        // IF direct private key wallet: signatureType = 0
         return SignatureType.EOA;
     } catch (error) {
-        return SignatureType.EOA;
+        // If network fails, we check if it's NOT the signer address
+        // (In Polymarket, if funder !== signer, it's almost always a Gnosis Safe)
+        return SignatureType.GNOSIS_SAFE; 
     }
 };
 
@@ -56,9 +83,10 @@ const createClobClient = async (privateKey: string, proxyWallet?: string): Promi
     const wallet = new ethers.Wallet(privateKey, provider);
     
     // Agent 3 & 5: Wallet Detection & Funder Validation
-    const signatureType = proxyWallet 
-        ? await getSignatureType(proxyWallet, provider)
-        : SignatureType.EOA;
+    let signatureType = SignatureType.EOA;
+    if (proxyWallet && proxyWallet.toLowerCase() !== wallet.address.toLowerCase()) {
+        signatureType = await getSignatureType(proxyWallet, provider);
+    }
 
     // Agent 1: Initial client for authentication
     let authClient = new ClobClient(

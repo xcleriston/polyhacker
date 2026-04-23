@@ -91,6 +91,9 @@ export async function syncDatabase() {
         ACTIVE_TENANTS = newTenants;
         GLOBAL_TARGET_TRADERS = Array.from(uniqueTraders);
 
+        console.log(`[Sync] Active Tenants: ${ACTIVE_TENANTS.map(t => `${t.name || t.userId} (${t.targetTraders.length} traders)`).join(', ')}`);
+        console.log(`[Sync] Global Traders: ${GLOBAL_TARGET_TRADERS.join(', ')}`);
+
         // For backward compatibility with modules expecting ENV to be populated
         if (GLOBAL_TARGET_TRADERS.length > 0) {
             ENV.USER_ADDRESSES = GLOBAL_TARGET_TRADERS;

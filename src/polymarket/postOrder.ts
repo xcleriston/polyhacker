@@ -6,6 +6,7 @@ import Logger from '@/lib/logger';
 import { calculateOrderSize, getTradeMultiplier } from '@/lib/config/copyStrategy';
 import createClobClient from '@/polymarket/createClobClient';
 import fetchData from '@/lib/fetchData';
+import { prisma } from '@/lib/prisma';
 
 const RETRY_LIMIT = ENV.RETRY_LIMIT;
 const COPY_STRATEGY_CONFIG = ENV.COPY_STRATEGY_CONFIG;
@@ -53,7 +54,8 @@ const postOrder = async (
     trade: UserActivityInterface,
     my_balance: number,
     userAddress: string,
-    privateKey?: string
+    privateKey?: string,
+    prismaTradeId?: string
 ) => {
     let currentClient = clobClient;
     const UserActivity = getUserActivityModel(userAddress);
@@ -81,6 +83,12 @@ const postOrder = async (
         
         if (orderCalc.finalAmount === 0) {
             Logger.warning(`[Executor] Skipping trade for ${userAddress}: calculated amount is $0.00 (Balance: $${my_balance})`);
+            if (prismaTradeId) {
+                await prisma.trade.update({
+                    where: { id: prismaTradeId },
+                    data: { status: `SKIPPED (CALC $0.00 | Bal: $${my_balance.toFixed(2)})` }
+                });
+            }
             await UserActivity.updateOne({ _id: (trade as any)._id }, { bot: true });
             return;
         }
@@ -122,6 +130,15 @@ const postOrder = async (
             } catch (e) { retry++; }
         }
         await UserActivity.updateOne({ _id: trade._id }, { bot: true, myBoughtSize: totalBoughtTokens });
+        if (prismaTradeId) {
+            await prisma.trade.update({
+                where: { id: prismaTradeId },
+                data: { 
+                    status: totalBoughtTokens > 0 ? 'PROCESSED' : 'SKIPPED (NO LIQUIDITY)',
+                    transactionHash: totalBoughtTokens > 0 ? 'MULTIPLE' : undefined
+                }
+            });
+        }
     } else if (condition === 'sell') {
         Logger.info('Executing SELL strategy...');
         if (!my_position) {
@@ -191,6 +208,12 @@ const postOrder = async (
             }
         }
         await UserActivity.updateOne({ _id: trade._id }, { bot: true });
+        if (prismaTradeId) {
+            await prisma.trade.update({
+                where: { id: prismaTradeId },
+                data: { status: totalSoldTokens > 0 ? 'PROCESSED' : 'SKIPPED (NO POSITIONS)' }
+            });
+        }
     }
 };
 
