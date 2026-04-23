@@ -119,7 +119,7 @@ export async function waitForDatabaseConfig() {
             if (!syncInterval) {
                 syncInterval = setInterval(() => {
                     syncDatabase().catch(() => {});
-                }, 10000);
+                }, 1000);
             }
             return true;
         } else {
