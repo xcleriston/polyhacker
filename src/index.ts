@@ -89,21 +89,17 @@ export const main = async () => {
         await waitForDatabaseConfig();
         await fetchTargetTraders();
 
-        Logger.startup(ENV.USER_ADDRESSES || [], ENV.PROXY_WALLET || '');
-
-        // Perform initial health check
+        // Perform initial health check for each tenant
         Logger.info('Performing initial health check...');
-        const healthResult = await performHealthCheck();
-        logHealthCheck(healthResult);
-
-        if (!healthResult.healthy) {
-            Logger.warning('Health check failed, but continuing startup...');
+        const { ACTIVE_TENANTS } = await import('@/lib/settings');
+        
+        for (const tenant of ACTIVE_TENANTS) {
+            Logger.info(`[Tenant: ${tenant.name || tenant.userId}] Initializing...`);
+            const myBalance = await import('@/polymarket/getMyBalance').then(m => m.default(tenant.proxyWallet)).catch(() => 0);
+            Logger.info(`[Tenant: ${tenant.name || tenant.userId}] Balance: $${myBalance.toFixed(2)}`);
         }
 
-        // Send Telegram startup notification if enabled
-        const myBalance = await import('@/polymarket/getMyBalance').then(m => m.default(ENV.PROXY_WALLET)).catch(() => 0);
-        await import('@/lib/telegram').then(m => m.default.startup(ENV.USER_ADDRESSES.length, myBalance));
-
+        // Start trade monitor...
         Logger.separator();
         Logger.info('Starting trade monitor...');
         tradeMonitor();
