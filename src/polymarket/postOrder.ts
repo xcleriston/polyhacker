@@ -80,7 +80,7 @@ const postOrder = async (
         const orderCalc = calculateOrderSize(COPY_STRATEGY_CONFIG, trade.usdcSize, my_balance, currentPositionValue);
         
         if (orderCalc.finalAmount === 0) {
-            Logger.warn(`[Executor] Skipping trade for ${targetAddress}: calculated amount is $0.00 (Balance: $${balance})`);
+            Logger.warning(`[Executor] Skipping trade for ${targetAddress}: calculated amount is $0.00 (Balance: $${balance})`);
             await UserActivity.updateOne({ _id: (trade as any)._id }, { bot: true });
             return;
         }
