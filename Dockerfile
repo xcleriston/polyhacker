@@ -1,3 +1,4 @@
+# Version: 2.1.0 (Full Build)
 # Base stage
 FROM node:18-alpine AS base
 RUN apk add --no-cache libc6-compat
