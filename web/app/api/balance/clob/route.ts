@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import createClobClient from '@/../../src/utils/createClobClient';
+import createClobClient from '@/lib/createClobClient';
 import { verifyToken } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 
