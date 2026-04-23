@@ -12,13 +12,13 @@
         "dockerfilePath": "Dockerfile"
       },
       "deploy": {
-        "startCommand": "./start.sh",
+        "startCommand": "npm run bot:start",
         "restartPolicyType": "ON_FAILURE"
       }
     },
     "web": {
       "name": "poly-hacker-web",
-      "root": "web",
+      "root": "/",
       "source": {
         "repo": "xcleriston/polyhacker"
       },
@@ -27,7 +27,7 @@
         "dockerfilePath": "Dockerfile"
       },
       "deploy": {
-        "startCommand": "node server.js",
+        "startCommand": "npm run web:start",
         "restartPolicyType": "ON_FAILURE",
         "healthCheckPath": "/api/health"
       }

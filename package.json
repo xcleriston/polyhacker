@@ -12,6 +12,7 @@
     "web:dev": "next dev",
     "web:start": "next start",
     "check-allowance": "tsx src/scripts/checkAllowance.ts",
+    "validate-integration": "tsx src/scripts/validateIntegration.ts",
     "verify-allowance": "tsx src/scripts/verifyAllowance.ts",
     "set-token-allowance": "tsx src/scripts/setTokenAllowance.ts",
     "manual-sell": "tsx src/scripts/manualSell.ts",
