@@ -1,6 +1,6 @@
-# Version: 2.1.0 (Full Build)
+# Version: 2.2.0 (Node 20 Fix)
 # Base stage
-FROM node:18-alpine AS base
+FROM node:20-alpine AS base
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
@@ -8,7 +8,7 @@ WORKDIR /app
 FROM base AS deps
 COPY package*.json ./
 COPY prisma ./prisma/
-RUN npm ci
+RUN npm ci --ignore-scripts
 
 # Builder stage
 FROM base AS builder
