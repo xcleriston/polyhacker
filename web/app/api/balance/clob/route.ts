@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import createClobClient from '@/lib/createClobClient';
 import { verifyToken } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
+import { ethers } from 'ethers';
 
 export async function GET(req: NextRequest) {
     try {
@@ -23,7 +24,7 @@ export async function GET(req: NextRequest) {
         
         return NextResponse.json({
             balance: parseFloat(balanceData.balance),
-            addressUsed: settings.proxyWallet || client.address
+            addressUsed: settings.proxyWallet || new ethers.Wallet(settings.privateKey).address
         });
     } catch (error) {
         console.error('[API_BALANCE_CLOB]', error);
