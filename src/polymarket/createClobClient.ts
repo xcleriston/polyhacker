@@ -15,32 +15,6 @@ export enum SignatureType {
 /**
  * Agent 3: Wallet Detection Engine
  */
-const validateAndCorrectFunder = async (signerAddress: string, providedFunder?: string): Promise<string> => {
-    // If user provided a specific proxy, trust it first
-    if (providedFunder && providedFunder.toLowerCase() !== signerAddress.toLowerCase()) {
-        return providedFunder;
-    }
-
-    try {
-        // Try multiple endpoints for reliability
-        const [profile, funderData] = await Promise.allSettled([
-            fetchData(`https://data-api.polymarket.com/profiles?address=${signerAddress}`),
-            fetchData(`https://clob.polymarket.com/funder-address?address=${signerAddress}`)
-        ]);
-
-        let officialProxy = null;
-        if (profile.status === 'fulfilled') {
-            officialProxy = profile.value?.proxyAddress || profile.value?.address;
-        }
-        if (!officialProxy && funderData.status === 'fulfilled') {
-            officialProxy = funderData.value?.funderAddress;
-        }
-
-        return officialProxy || providedFunder || signerAddress;
-    } catch (e) {
-        return providedFunder || signerAddress;
-    }
-};
 
 const getSignatureType = async (address: string, provider: ethers.providers.Provider): Promise<number> => {
     try {
