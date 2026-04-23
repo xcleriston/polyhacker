@@ -36,7 +36,7 @@ export const getWalletBalance = async (proxyWallet?: string, privateKey?: string
     if (balance === 0) {
         console.log(`[BalanceCheck] API reported 0. Checking contracts directly...`);
         const rpcUrl = process.env.RPC_URL || 'https://polygon-rpc.com';
-        const provider = new ethers.JsonRpcProvider(rpcUrl);
+        const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
         const usdcAbi = ['function balanceOf(address) view returns (uint256)', 'function decimals() view returns (uint8)'];
         
         const contracts = [
@@ -49,13 +49,15 @@ export const getWalletBalance = async (proxyWallet?: string, privateKey?: string
                 const contract = new ethers.Contract(contractAddr, usdcAbi, provider);
                 const rawBal = await contract.balanceOf(correctedFunder);
                 const decimals = await contract.decimals();
-                const formattedBal = parseFloat(ethers.formatUnits(rawBal, decimals));
+                const formattedBal = parseFloat(ethers.utils.formatUnits(rawBal, decimals));
                 if (formattedBal > 0) {
                     console.log(`[BalanceCheck] Found ${formattedBal} USDC in contract ${contractAddr}`);
                     balance = formattedBal;
                     break;
                 }
-            } catch (e) {}
+            } catch (e) {
+                console.error(`[BalanceCheck] Fallback error for ${contractAddr}:`, e instanceof Error ? e.message : e);
+            }
         }
     }
 
