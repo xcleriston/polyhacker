@@ -8,7 +8,7 @@ async function main() {
   console.log(JSON.stringify(settings, (key, value) => 
     key === 'privateKey' ? 'MASKED' : value, 2));
     
-  const traders = await prisma.targetTrader.findMany();
+  const traders = await prisma.trader.findMany();
   console.log('\n--- TARGET TRADERS ---');
   console.log(JSON.stringify(traders, null, 2));
 }
