@@ -3,7 +3,7 @@
   "version": "2.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "npm run bot:start",
+    "start": "next start",
     "postinstall": "node src/scripts/postinstall.js",
     "help": "tsx src/scripts/help.ts",
     "setup": "tsx src/scripts/setup.ts",
