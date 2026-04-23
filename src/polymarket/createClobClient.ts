@@ -51,7 +51,8 @@ const createOrDeriveApiCreds = async (client: ClobClient) => {
 const createClobClient = async (privateKey: string, proxyWallet?: string): Promise<ClobClient> => {
     const chainId = 137;
     const host = 'https://clob.polymarket.com';
-    const provider = new ethers.providers.JsonRpcProvider('https://polygon-rpc.com');
+    const rpcUrl = process.env.RPC_URL || 'https://polygon-rpc.com';
+    const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
     const wallet = new ethers.Wallet(privateKey, provider);
     
     // Agent 3 & 5: Wallet Detection & Funder Validation
