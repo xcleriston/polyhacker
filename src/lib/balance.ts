@@ -21,20 +21,23 @@ export const getWalletBalance = async (proxyWallet?: string, privateKey?: string
   
   try {
     const signerAddress = new ethers.Wallet(privateKey).address;
+    console.log(`[BalanceCheck] Signer Address: ${signerAddress}`);
     const correctedFunder = await validateAndCorrectFunder(signerAddress, proxyWallet);
+    console.log(`[BalanceCheck] Funder Used: ${correctedFunder}`);
     
     const client = await createClobClient(privateKey, correctedFunder);
     
     // Agent 4: update before get
     await client.updateBalanceAllowance({ asset_type: AssetType.COLLATERAL });
     const balanceData = await client.getBalanceAllowance({ asset_type: AssetType.COLLATERAL });
+    console.log(`[BalanceCheck] Raw Balance: ${balanceData.balance}`);
     
     return {
       balance: parseFloat(balanceData.balance),
       addressUsed: correctedFunder
     };
   } catch (error) {
-    console.error('[getWalletBalance]', error);
+    console.error('[getWalletBalance] ERROR:', error instanceof Error ? error.message : error);
     return { balance: 0 };
   }
 };
