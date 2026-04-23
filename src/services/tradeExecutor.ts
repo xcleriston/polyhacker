@@ -153,6 +153,7 @@ const tradeExecutor = async () => {
                     if (!tenant.settings.botEnabled) continue;
                     const trades = await readTempTradesForTenant(tenant);
                     if (trades.length === 0) continue;
+                    Logger.info(`[Executor] Found ${trades.length} new trades for user ${tenant.name || tenant.userId}`);
 
                     const useEoa = (proxyFailures.get(tenant.userId) || 0) >= 3;
                     const clobClient = await getClobClientForTenant(tenant, useEoa);

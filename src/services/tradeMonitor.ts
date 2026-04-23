@@ -216,6 +216,7 @@ export const stopTradeMonitor = () => {
 const tradeMonitor = async () => {
     await init();
     const userModels = getUserModels();
+    Logger.info(`Target Traders to Monitor: ${ENV.USER_ADDRESSES.join(', ')}`);
     Logger.success(`Monitoring ${ENV.USER_ADDRESSES.length} trader(s) every ${ENV.FETCH_INTERVAL}s`);
     Logger.separator();
 
