@@ -1,7 +1,7 @@
 import { Telegraf } from 'telegraf';
 import Logger from '../utils/logger';
 import { ACTIVE_TENANTS } from '../utils/settings';
-import { query } from '../utils/pg';
+import { ENV } from '../config/env';
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN || '');
 
@@ -11,60 +11,29 @@ export const startTelegramBot = () => {
         return;
     }
 
+    const ADMIN_CHAT_ID = ENV.TELEGRAM_CHAT_ID;
+
+    // Middleware to restrict to Admin only
+    bot.use(async (ctx, next) => {
+        if (ctx.chat?.id.toString() !== ADMIN_CHAT_ID) {
+            return ctx.reply('⚠️ Este bot está configurado em modo restrito ao Administrador.');
+        }
+        return next();
+    });
+
     bot.start((ctx) => {
-        ctx.reply('🚀 *Poly Hacker Bot SaaS*\n\nPara receber notificações, vincule seu e-mail cadastrado usando o comando:\n\n`/vincular seu_email@exemplo.com`', { parse_mode: 'Markdown' });
+        ctx.reply('🚀 *Poly Hacker Admin Bot*\n\nStatus: Online\nRegion: Amsterdam (EU)\n\nUse `/status` para ver o resumo do sistema.', { parse_mode: 'Markdown' });
     });
 
     bot.command('status', async (ctx) => {
-        const chatId = ctx.chat.id.toString();
-        
         try {
-            // Find user settings by chatId
-            const res = await query('SELECT s.*, u.email FROM "Settings" s JOIN "User" u ON s."userId" = u.id WHERE s."telegramChatId" = $1', [chatId]);
-            const settings = res.rows[0];
-
-            if (!settings) {
-                return ctx.reply('❌ Conta não vinculada. Use `/vincular [seu_email]` para começar.');
-            }
-
-            const tenant = ACTIVE_TENANTS.find(t => t.userId === settings.userId);
-            const status = tenant ? '✅ Ativo' : '❌ Inativo (Verifique Configurações)';
-            const mode = settings.testMode ? '🧪 Test Mode' : '⚡ Live Mode';
-
-            ctx.reply(`📊 *Status do seu Bot*\n\nUsuário: ${settings.email}\nStatus: ${status}\nModo: ${mode}\nTraders: ${tenant?.targetTraders.length || 0}`, { parse_mode: 'Markdown' });
+            const activeCount = ACTIVE_TENANTS.filter(t => t.settings.botEnabled).length;
+            const totalTraders = ACTIVE_TENANTS.reduce((sum, t) => sum + t.targetTraders.length, 0);
+            
+            ctx.reply(`📊 *Sistema SaaS - Status Geral*\n\nUsuários Ativos: ${activeCount}\nTotal de Traders Monitorados: ${totalTraders}\n\nO bot está operando para todos os usuários com Live Mode ativo.`, { parse_mode: 'Markdown' });
         } catch (err) {
             Logger.error(`Telegram Status Error: ${err}`);
-            ctx.reply('❌ Erro ao buscar status.');
-        }
-    });
-
-    bot.command('vincular', async (ctx) => {
-        const text = (ctx.message as any).text || '';
-        const email = text.split(' ')[1]?.trim().toLowerCase();
-
-        if (!email) {
-            return ctx.reply('⚠️ Use: `/vincular seu_email@exemplo.com`');
-        }
-
-        try {
-            const userRes = await query('SELECT id FROM "User" WHERE email = $1', [email]);
-            const user = userRes.rows[0];
-
-            if (!user) {
-                return ctx.reply('❌ E-mail não encontrado no sistema.');
-            }
-
-            await query(`
-                INSERT INTO "Settings" ("userId", "telegramChatId", "testMode")
-                VALUES ($1, $2, true)
-                ON CONFLICT ("userId") 
-                DO UPDATE SET "telegramChatId" = $2
-            `, [user.id, ctx.chat.id.toString()]);
-
-            ctx.reply(`✅ Conta vinculada com sucesso ao e-mail: *${email}*`, { parse_mode: 'Markdown' });
-        } catch (err) {
-            Logger.error(`Telegram Bind Error: ${err}`);
-            ctx.reply('❌ Erro ao vincular conta.');
+            ctx.reply('❌ Erro ao buscar status do sistema.');
         }
     });
 
